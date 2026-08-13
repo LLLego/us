@@ -6,7 +6,7 @@
 // Find it in: Supabase Dashboard → Settings → API → Project API keys → anon public
 
 const SUPABASE_URL = 'https://sedgohupnmmacdfwdata.supabase.co';
-const SUPABASE_ANON_KEY = 'REPLACE_WITH_YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZGdvaHVwbm1tYWNkZndkYXRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2Mjk2NDAsImV4cCI6MjEwMjIwNTY0MH0.uxR6kRDnfq3XKzshvWm3Pgcm_sTWZcTsl5n6A5P0-fg';
 const BUCKET = 'photos';
 
 // Generate or retrieve per-device ID

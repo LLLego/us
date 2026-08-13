@@ -355,8 +355,15 @@ const app = {
     const rot = (Math.random() - 0.5) * 3;
     polaroid.style.transform = `rotate(${rot}deg)`;
     
-    // Save to gallery
+    // Save to gallery (local + cloud)
     this.addToGallery(this.capturedImage);
+    
+    // Upload to Supabase (cloud gallery)
+    if (typeof storage !== 'undefined') {
+      storage.upload(this.capturedImage).then(url => {
+        if (url) console.log('Photo saved to cloud');
+      });
+    }
   },
   
   retake() {
@@ -394,17 +401,34 @@ const app = {
     } catch(e) { this.gallery = []; }
   },
   
-  openGallery() {
+  async openGallery() {
     this.showScreen('gallery-screen');
     const grid = document.getElementById('gallery-grid');
-    grid.innerHTML = '';
+    grid.innerHTML = '<p class="gallery-empty">Loading your moments...</p>';
     
-    if (this.gallery.length === 0) {
+    // Load both local + cloud photos
+    let photos = [...this.gallery];
+    
+    // Try loading from Supabase
+    if (typeof storage !== 'undefined') {
+      const cloudPhotos = await storage.listPhotos();
+      cloudPhotos.forEach(cp => {
+        if (!photos.find(p => p.url === cp.url)) {
+          photos.push(cp);
+        }
+      });
+    }
+    
+    if (photos.length === 0) {
       grid.innerHTML = '<p class="gallery-empty">No memories yet.<br>Take one together.</p>';
       return;
     }
     
-    this.gallery.forEach(item => {
+    // Sort newest first
+    photos.sort((a, b) => (b.time || 0) - (a.time || 0));
+    
+    grid.innerHTML = '';
+    photos.forEach(item => {
       const div = document.createElement('div');
       div.className = 'gallery-item';
       div.onclick = () => {

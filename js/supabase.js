@@ -1,22 +1,32 @@
 // ===== SUPABASE STORAGE =====
-// Uploads photos to Supabase so they're shareable online
+// Uploads photos to Supabase tied to a per-device ID (no login needed)
 
 const SUPABASE_URL = 'https://sedgohupnmmacdfwdata.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlZGdvaHVwbm1tYWNkZndkYXRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2Mjk2NDAsImV4cCI6MjEwMjIwNTY0MH0.uxR6kRDnfq3XKzshvWm3Pgcm_sTWZcTsl5n6A5P0-fg';
 const BUCKET = 'photos';
 
+// Generate or retrieve per-device ID
+function getDeviceId() {
+  let id = localStorage.getItem('us_device_id');
+  if (!id) {
+    id = 'dev_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    localStorage.setItem('us_device_id', id);
+  }
+  return id;
+}
+
 const storage = {
+  deviceId: getDeviceId(),
+  
   async upload(dataURL) {
     try {
-      // Convert dataURL to blob
       const response = await fetch(dataURL);
       const blob = await response.blob();
       
-      // Generate unique filename
       const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const filename = `us_${ts}.jpg`;
+      // Include device ID in filename so we can filter
+      const filename = `${this.deviceId}/${ts}.jpg`;
       
-      // Upload to Supabase Storage
       const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${filename}`, {
         method: 'POST',
         headers: {
@@ -27,14 +37,11 @@ const storage = {
       });
       
       if (!res.ok) {
-        const err = await res.text();
-        console.error('Upload failed:', err);
+        console.error('Upload failed:', await res.text());
         return null;
       }
       
-      // Return public URL
       const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${filename}`;
-      console.log('Uploaded:', publicUrl);
       return publicUrl;
     } catch (e) {
       console.error('Upload error:', e);
@@ -44,6 +51,7 @@ const storage = {
   
   async listPhotos() {
     try {
+      // List only THIS device's photos (using folder prefix)
       const res = await fetch(`${SUPABASE_URL}/storage/v1/object/list/${BUCKET}`, {
         method: 'POST',
         headers: {
@@ -51,7 +59,7 @@ const storage = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prefix: '',
+          prefix: this.deviceId + '/',
           limit: 50,
           offset: 0,
           sortBy: { column: 'created_at', order: 'desc' },
@@ -61,11 +69,10 @@ const storage = {
       if (!res.ok) return [];
       
       const data = await res.json();
-      // Filter to only images, build public URLs
       return data
         .filter(item => item.name.endsWith('.jpg') || item.name.endsWith('.png'))
         .map(item => ({
-          url: `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${item.name}`,
+          url: `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${this.deviceId}/${item.name}`,
           name: item.name,
           created: item.created_at,
         }));
@@ -74,4 +81,25 @@ const storage = {
       return [];
     }
   },
+  
+  async deletePhoto(url) {
+    try {
+      // Extract filename from URL
+      const filename = url.split(`/${BUCKET}/`)[1];
+      if (!filename) return false;
+      
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${filename}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      });
+      
+      return res.ok;
+    } catch (e) {
+      console.error('Delete error:', e);
+      return false;
+    }
+  },
 };
+

@@ -656,18 +656,20 @@ const app = {
     });
   },
   
-  deletePhoto(item, idx, element) {
+  async deletePhoto(item, idx, element) {
     // Remove from local gallery
     const localIdx = this.gallery.findIndex(g => g.url === item.url);
     if (localIdx >= 0) {
       this.gallery.splice(localIdx, 1);
       this.saveGallery();
     }
+    // Delete from Supabase cloud
+    if (typeof storage !== 'undefined' && item.url) {
+      await storage.deletePhoto(item.url);
+    }
     // Remove from DOM
     if (element) element.remove();
-    // Note: Supabase deletion would need service_role key (can't do from client safely)
-    // For now, local delete is enough — cloud copy stays but is removed from view
-    console.log('Photo deleted from gallery');
+    console.log('Photo deleted');
   },
   
   // ===== ROOM CODE =====

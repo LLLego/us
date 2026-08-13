@@ -527,21 +527,67 @@ body::before {
 
 /* ===== MOBILE ===== */
 @media (max-width: 480px) {
-  .controls-bar {
-    flex-direction: column-reverse;
-    gap: calc(var(--s) * 2);
+  #stage {
+    overflow-y: auto;
+  }
+  .stage-topbar {
+    padding: calc(var(--s)) calc(var(--s) * 2);
+    flex-shrink: 0;
   }
   .video-container {
     aspect-ratio: 9 / 16;
     flex-direction: column;
+    max-width: 100%;
+  }
+  .video-half {
+    flex: 1;
   }
   .video-divider {
     width: 100%;
     height: 3px;
   }
+  .controls-bar {
+    flex-direction: row;
+    gap: calc(var(--s));
+    padding: calc(var(--s) * 2);
+  }
+  .shutter-btn {
+    width: 64px;
+    height: 64px;
+  }
+  .shutter-btn::after {
+    width: 44px;
+    height: 44px;
+  }
+  .btn {
+    font-size: 13px;
+    padding: calc(var(--s) * 1.5) calc(var(--s) * 2);
+  }
+  .filter-chip, .frame-chip {
+    font-size: 12px;
+    padding: calc(var(--s) * 1.2) calc(var(--s) * 1.8);
+    /* Minimum 40px touch target height */
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .controls-row {
+    padding: 0 calc(var(--s) * 2);
+    gap: calc(var(--s));
+  }
   .room-code-box {
     font-size: 36px;
     padding: calc(var(--s) * 2) calc(var(--s) * 3);
+  }
+  .reveal-polaroid {
+    padding: calc(var(--s) * 2) calc(var(--s) * 2) calc(var(--s) * 8);
+  }
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: calc(var(--s));
+  }
+  .screen {
+    padding: calc(var(--s) * 2);
   }
 }
 

@@ -1,62 +1,161 @@
 // ===== FRAMES =====
-// Each frame is a function that receives ctx + canvas dimensions and draws itself.
-// Runs AFTER the photo is composited. Draws on top.
+// Each frame = a function(ctx, w, h) that draws itself on the canvas.
+// Runs AFTER the photo is composited. ctx.filter is reset to 'none' before calling.
 
 // ===== LAYOUTS =====
-// Photo layout options: single, 1x4 strip, 2x2 grid, etc.
-// Each defines how captures are arranged on the final canvas.
-
 const LAYOUTS = {
-  single: {
-    name: 'Single',
-    shots: 1,
-    description: 'One photo',
-  },
-  'strip-4': {
-    name: 'Strip 1×4',
-    shots: 4,
-    description: 'Classic vertical strip',
-  },
-  'grid-2x2': {
-    name: 'Grid 2×2',
-    shots: 4,
-    description: 'Four photos in a square',
-  },
-  'strip-3': {
-    name: 'Strip 1×3',
-    shots: 3,
-    description: 'Three photos vertical',
-  },
+  single: { name: 'Single', shots: 1, description: 'One photo' },
+  'strip-4': { name: 'Strip 1×4', shots: 4, description: 'Classic vertical strip' },
+  'grid-2x2': { name: 'Grid 2×2', shots: 4, description: 'Four photos in a square' },
+  'strip-3': { name: 'Strip 1×3', shots: 3, description: 'Three photos vertical' },
 };
 
+// ===== HELPER FUNCTIONS =====
+function frameFillBg(ctx, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, w, h);
+}
+
+function frameBorder(ctx, w, h, width, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, w, width);
+  ctx.fillRect(0, h - width, w, width);
+  ctx.fillRect(0, 0, width, h);
+  ctx.fillRect(w - width, 0, width, h);
+}
+
+function frameDateStamp(ctx, w, h, text, font, size, color, align, x, y) {
+  ctx.fillStyle = color;
+  ctx.font = `${font} ${size}px '${font}', sans-serif`;
+  ctx.textAlign = align;
+  ctx.fillText(text, x, y);
+}
+
+function drawCircle(ctx, cx, cy, r, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawStar(ctx, cx, cy, size, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const angle = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+    const x = cx + Math.cos(angle) * size;
+    const y = cy + Math.sin(angle) * size;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawHeart(ctx, cx, cy, size, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + size * 0.3);
+  ctx.bezierCurveTo(cx, cy, cx - size, cy, cx - size, cy - size * 0.3);
+  ctx.bezierCurveTo(cx - size, cy - size * 0.8, cx, cy - size * 0.8, cx, cy - size * 0.4);
+  ctx.bezierCurveTo(cx, cy - size * 0.8, cx + size, cy - size * 0.8, cx + size, cy - size * 0.3);
+  ctx.bezierCurveTo(cx + size, cy, cx, cy, cx, cy + size * 0.3);
+  ctx.fill();
+}
+
+function drawLeaf(ctx, cx, cy, size, angle, color) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, size, size * 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawHoneyDrop(ctx, cx, cy, size, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(cx, cy, size, 0, Math.PI * 2);
+  ctx.fill();
+  // Highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.beginPath();
+  ctx.arc(cx - size * 0.3, cy - size * 0.3, size * 0.3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawBee(ctx, cx, cy, size) {
+  // Body
+  ctx.fillStyle = '#FFD700';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, size, size * 0.7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Stripes
+  ctx.fillStyle = '#181410';
+  ctx.fillRect(cx - size * 0.3, cy - size * 0.5, size * 0.15, size);
+  ctx.fillRect(cx + size * 0.1, cy - size * 0.5, size * 0.15, size);
+  // Wings
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.beginPath();
+  ctx.ellipse(cx - size * 0.3, cy - size * 0.8, size * 0.4, size * 0.25, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + size * 0.3, cy - size * 0.8, size * 0.4, size * 0.25, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawMouseBow(ctx, cx, cy, size, color) {
+  // Hello Kitty style bow
+  ctx.fillStyle = color;
+  // Left loop
+  ctx.beginPath();
+  ctx.ellipse(cx - size, cy, size * 0.7, size * 0.6, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  // Right loop
+  ctx.beginPath();
+  ctx.ellipse(cx + size, cy, size * 0.7, size * 0.6, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  // Center knot
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, size * 0.4, size * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawHunnyPot(ctx, cx, cy, size, color) {
+  // Pot body
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + size * 0.3, size * 0.8, size * 0.7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Pot rim
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - size * 0.3, size * 0.7, size * 0.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// ===== ALL FRAMES =====
 const FRAMES = {
-  none: {
-    name: 'No Frame',
-    draw: () => {},
-  },
+  none: { name: 'None', draw: () => {} },
+
+  // ===== CLEAN / MINIMAL =====
   polaroid: {
     name: 'Polaroid',
     draw: (ctx, w, h) => {
-      // White border: thick bottom, medium sides/top
-      const bt = Math.round(h * 0.08); // bottom
-      const st = Math.round(w * 0.04); // sides + top
+      const bt = Math.round(h * 0.08);
+      const st = Math.round(w * 0.04);
       ctx.fillStyle = '#FDFBF7';
-      // Top
       ctx.fillRect(0, 0, w, st);
-      // Bottom
       ctx.fillRect(0, h - bt, w, bt);
-      // Left
       ctx.fillRect(0, 0, st, h);
-      // Right
       ctx.fillRect(w - st, 0, st, h);
-      // Date stamp area
       ctx.fillStyle = '#181410';
       ctx.font = `400 ${Math.round(bt * 0.3)}px 'Space Mono', monospace`;
       ctx.textAlign = 'center';
-      const dateStr = new Date().toLocaleDateString('en-US', { 
-        month: 'short', day: 'numeric', year: 'numeric' 
-      }).toUpperCase();
-      ctx.fillText(dateStr, w / 2, h - bt / 2.5);
+      const d = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+      ctx.fillText(d, w / 2, h - bt / 2.5);
     },
   },
   hairline: {
@@ -65,56 +164,48 @@ const FRAMES = {
       ctx.strokeStyle = '#181410';
       ctx.lineWidth = 3;
       ctx.strokeRect(4, 4, w - 8, h - 8);
-      // Date in bottom right
       ctx.fillStyle = '#181410';
       ctx.font = `400 14px 'Space Mono', monospace`;
       ctx.textAlign = 'right';
-      const dateStr = new Date().toLocaleDateString('en-US', { 
-        month: 'short', day: 'numeric' 
-      }).toUpperCase();
-      ctx.fillText(`US · ${dateStr}`, w - 16, h - 16);
+      const d = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+      ctx.fillText(`US · ${d}`, w - 16, h - 16);
+    },
+  },
+  cleanWhite: {
+    name: 'Clean',
+    draw: (ctx, w, h) => {
+      const bw = Math.round(w * 0.025);
+      frameBorder(ctx, w, h, bw, '#FFFFFF');
+    },
+  },
+  shadowBox: {
+    name: 'Shadow',
+    draw: (ctx, w, h) => {
+      ctx.shadowColor = 'rgba(24,20,16,0.4)';
+      ctx.shadowBlur = 20;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 8;
+      ctx.strokeStyle = 'rgba(24,20,16,0.15)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(2, 2, w - 4, h - 4);
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
     },
   },
   kodak: {
-    name: 'Kodak Red',
+    name: 'Kodak',
     draw: (ctx, w, h) => {
-      // Red border
       const bw = Math.round(w * 0.03);
-      ctx.fillStyle = '#D64045';
-      ctx.fillRect(0, 0, w, bw); // top
-      ctx.fillRect(0, h - bw, w, bw); // bottom
-      ctx.fillRect(0, 0, bw, h); // left
-      ctx.fillRect(w - bw, 0, bw, h); // right
-      // Inner thin black line
+      frameBorder(ctx, w, h, bw, '#D64045');
       ctx.strokeStyle = '#181410';
       ctx.lineWidth = 1;
       ctx.strokeRect(bw + 2, bw + 2, w - 2 * bw - 4, h - 2 * bw - 4);
     },
   },
-  filmstrip: {
-    name: 'Film Strip',
-    draw: (ctx, w, h) => {
-      const holeSize = Math.round(w * 0.04);
-      const holeSpacing = holeSize * 1.8;
-      const stripH = Math.round(h * 0.05);
-      // Top strip
-      ctx.fillStyle = '#181410';
-      ctx.fillRect(0, 0, w, stripH);
-      ctx.fillRect(0, h - stripH, w, stripH);
-      // Holes (transparent = cream)
-      ctx.fillStyle = '#F2EBE0';
-      for (let x = holeSpacing / 2; x < w; x += holeSpacing) {
-        ctx.fillRect(x - holeSize / 2, stripH * 0.25, holeSize, stripH * 0.5);
-        ctx.fillRect(x - holeSize / 2, h - stripH * 0.75, holeSize, stripH * 0.5);
-      }
-    },
-  },
   rounded: {
     name: 'Soft',
     draw: (ctx, w, h) => {
-      const r = Math.round(w * 0.03);
-      const bw = 4;
-      // Rounded rect border
+      const r = Math.round(w * 0.03), bw = 4;
       ctx.strokeStyle = '#181410';
       ctx.lineWidth = bw;
       ctx.beginPath();
@@ -128,6 +219,299 @@ const FRAMES = {
       ctx.lineTo(bw, bw + r);
       ctx.quadraticCurveTo(bw, bw, bw + r, bw);
       ctx.stroke();
+    },
+  },
+  filmstrip: {
+    name: 'Film',
+    draw: (ctx, w, h) => {
+      const holeSize = Math.round(w * 0.04);
+      const holeSpacing = holeSize * 1.8;
+      const stripH = Math.round(h * 0.05);
+      ctx.fillStyle = '#181410';
+      ctx.fillRect(0, 0, w, stripH);
+      ctx.fillRect(0, h - stripH, w, stripH);
+      ctx.fillStyle = '#F2EBE0';
+      for (let x = holeSpacing / 2; x < w; x += holeSpacing) {
+        ctx.fillRect(x - holeSize / 2, stripH * 0.25, holeSize, stripH * 0.5);
+        ctx.fillRect(x - holeSize / 2, h - stripH * 0.75, holeSize, stripH * 0.5);
+      }
+    },
+  },
+
+  // ===== CUSTOM / FUN =====
+  stamp: {
+    name: 'Stamp',
+    draw: (ctx, w, h) => {
+      // Perforated edges like a postage stamp
+      const perf = Math.round(w * 0.015);
+      const dot = perf * 0.6;
+      ctx.fillStyle = '#181410';
+      // Top edge dots
+      for (let x = perf; x < w; x += perf * 2) {
+        drawCircle(ctx, x, perf / 2, dot / 2, '#F2EBE0');
+        drawCircle(ctx, x, h - perf / 2, dot / 2, '#F2EBE0');
+      }
+      for (let y = perf; y < h; y += perf * 2) {
+        drawCircle(ctx, perf / 2, y, dot / 2, '#F2EBE0');
+        drawCircle(ctx, w - perf / 2, y, dot / 2, '#F2EBE0');
+      }
+      // Inner border
+      ctx.strokeStyle = '#181410';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(perf * 1.5, perf * 1.5, w - perf * 3, h - perf * 3);
+    },
+  },
+  hearts: {
+    name: 'Hearts',
+    draw: (ctx, w, h) => {
+      const size = Math.round(w * 0.025);
+      const positions = [
+        [w * 0.05, h * 0.05], [w * 0.95, h * 0.05],
+        [w * 0.05, h * 0.95], [w * 0.95, h * 0.95],
+        [w * 0.5, h * 0.04], [w * 0.5, h * 0.96],
+      ];
+      positions.forEach(([x, y]) => drawHeart(ctx, x, y, size, '#D64045'));
+    },
+  },
+  confetti: {
+    name: 'Confetti',
+    draw: (ctx, w, h) => {
+      const colors = ['#D64045', '#F2C998', '#3A6B5C', '#FFD700', '#181410'];
+      const size = Math.round(w * 0.008);
+      // Scatter dots around edges
+      for (let i = 0; i < 60; i++) {
+        const edge = i % 4;
+        let x, y;
+        if (edge === 0) { x = Math.random() * w; y = Math.random() * (h * 0.06); }
+        else if (edge === 1) { x = Math.random() * (w * 0.06) + w * 0.94; y = Math.random() * h; }
+        else if (edge === 2) { x = Math.random() * w; y = Math.random() * (h * 0.06) + h * 0.94; }
+        else { x = Math.random() * (w * 0.06); y = Math.random() * h; }
+        drawCircle(ctx, x, y, size + Math.random() * size, colors[i % colors.length]);
+      }
+    },
+  },
+  dateStamp: {
+    name: 'Date',
+    draw: (ctx, w, h) => {
+      const bt = Math.round(h * 0.12);
+      ctx.fillStyle = '#181410';
+      ctx.fillRect(0, h - bt, w, bt);
+      ctx.fillStyle = '#F2EBE0';
+      ctx.font = `700 ${Math.round(bt * 0.25)}px 'Space Mono', monospace`;
+      ctx.textAlign = 'center';
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+      const numStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+      ctx.fillText(dateStr, w / 2, h - bt * 0.65);
+      ctx.font = `400 ${Math.round(bt * 0.18)}px 'Space Mono', monospace`;
+      ctx.fillText(numStr, w / 2, h - bt * 0.3);
+    },
+  },
+  doubleLine: {
+    name: 'Double',
+    draw: (ctx, w, h) => {
+      const gap = 6;
+      ctx.strokeStyle = '#181410';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(gap, gap, w - gap * 2, h - gap * 2);
+      ctx.strokeStyle = '#D64045';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(gap * 3, gap * 3, w - gap * 6, h - gap * 6);
+    },
+  },
+
+  // ===== WINNIE THE POOH =====
+  honey: {
+    name: 'Hunny',
+    draw: (ctx, w, h) => {
+      const bw = Math.round(w * 0.05);
+      // Warm golden border
+      frameBorder(ctx, w, h, bw, '#D4A017');
+      // "hunny" text in handwritten at bottom
+      ctx.fillStyle = '#8B5A00';
+      ctx.font = `700 ${Math.round(bw * 0.6)}px 'Caveat', cursive`;
+      ctx.textAlign = 'center';
+      ctx.fillText('hunny', w / 2, h - bw / 2.5);
+      // Honey drip accents on top corners
+      drawHoneyDrop(ctx, bw * 1.5, bw / 2, bw / 4, '#D4A017');
+      drawHoneyDrop(ctx, w - bw * 1.5, bw / 2, bw / 4, '#D4A017');
+      // Tiny bees
+      const beeSize = Math.round(w * 0.012);
+      drawBee(ctx, w * 0.15, bw + beeSize * 2, beeSize);
+      drawBee(ctx, w * 0.85, bw + beeSize * 2, beeSize);
+    },
+  },
+  hundredAcre: {
+    name: 'Forest',
+    draw: (ctx, w, h) => {
+      const bw = Math.round(w * 0.035);
+      frameBorder(ctx, w, h, bw, '#3A6B5C');
+      // Leaves scattered on the border
+      const leafSize = Math.round(w * 0.02);
+      drawLeaf(ctx, bw / 2, h * 0.15, leafSize, 0.5, '#5A8B7C');
+      drawLeaf(ctx, bw / 2, h * 0.4, leafSize, -0.3, '#3A6B5C');
+      drawLeaf(ctx, bw / 2, h * 0.7, leafSize, 0.8, '#5A8B7C');
+      drawLeaf(ctx, w - bw / 2, h * 0.25, leafSize, -0.5, '#3A6B5C');
+      drawLeaf(ctx, w - bw / 2, h * 0.55, leafSize, 0.3, '#5A8B7C');
+      drawLeaf(ctx, w - bw / 2, h * 0.85, leafSize, -0.7, '#3A6B5C');
+      drawLeaf(ctx, w * 0.2, bw / 2, leafSize, 1.2, '#5A8B7C');
+      drawLeaf(ctx, w * 0.6, bw / 2, leafSize, -1.0, '#3A6B5C');
+      drawLeaf(ctx, w * 0.3, h - bw / 2, leafSize, 1.5, '#5A8B7C');
+      drawLeaf(ctx, w * 0.7, h - bw / 2, leafSize, -1.3, '#3A6B5C');
+      // Small red balloon accent (Pooh's balloon)
+      drawCircle(ctx, w * 0.5, bw + leafSize, leafSize * 0.8, '#D64045');
+    },
+  },
+  balloon: {
+    name: 'Balloon',
+    draw: (ctx, w, h) => {
+      // Floating balloons in corners
+      const bSize = Math.round(w * 0.035);
+      // Top-left red balloon
+      drawCircle(ctx, bSize * 1.5, bSize * 1.5, bSize, '#D64045');
+      ctx.strokeStyle = '#181410';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(bSize * 1.5, bSize * 2.5);
+      ctx.lineTo(bSize * 0.8, bSize * 5);
+      ctx.stroke();
+      // Top-right green balloon
+      drawCircle(ctx, w - bSize * 1.5, bSize * 1.5, bSize, '#3A6B5C');
+      ctx.beginPath();
+      ctx.moveTo(w - bSize * 1.5, bSize * 2.5);
+      ctx.lineTo(w - bSize * 0.8, bSize * 5);
+      ctx.stroke();
+      // Bottom gold balloon
+      drawCircle(ctx, bSize * 1.5, h - bSize * 1.5, bSize, '#FFD700');
+      ctx.beginPath();
+      ctx.moveTo(bSize * 1.5, h - bSize * 2.5);
+      ctx.lineTo(bSize * 0.8, h - bSize * 5);
+      ctx.stroke();
+      drawCircle(ctx, w - bSize * 1.5, h - bSize * 1.5, bSize, '#D4A017');
+      ctx.beginPath();
+      ctx.moveTo(w - bSize * 1.5, h - bSize * 2.5);
+      ctx.lineTo(w - bSize * 0.8, h - bSize * 5);
+      ctx.stroke();
+    },
+  },
+
+  // ===== PUCCA & GARU =====
+  pucca: {
+    name: 'Pucca',
+    draw: (ctx, w, h) => {
+      const bw = Math.round(w * 0.04);
+      // Red border (Pucca's outfit)
+      frameBorder(ctx, w, h, bw, '#D64045');
+      // Hearts scattered (Pucca loves Garu!)
+      const hSize = Math.round(w * 0.02);
+      drawHeart(ctx, bw + hSize * 2, bw + hSize * 2, hSize, '#D64045');
+      drawHeart(ctx, w - bw - hSize * 2, bw + hSize * 2, hSize, '#D64045');
+      drawHeart(ctx, bw + hSize * 2, h - bw - hSize * 2, hSize, '#D64045');
+      drawHeart(ctx, w - bw - hSize * 2, h - bw - hSize * 2, hSize, '#D64045');
+      drawHeart(ctx, w / 2, bw + hSize, hSize * 0.8, '#D64045');
+      // "love" handwritten
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `700 ${Math.round(bw * 0.5)}px 'Caveat', cursive`;
+      ctx.textAlign = 'center';
+      ctx.fillText('♥ love ♥', w / 2, h - bw / 2.5);
+    },
+  },
+  ninja: {
+    name: 'Ninja',
+    draw: (ctx, w, h) => {
+      // Black border (Garu's ninja style)
+      const bw = Math.round(w * 0.045);
+      frameBorder(ctx, w, h, bw, '#181410');
+      // Ninja star accents
+      const sSize = Math.round(w * 0.018);
+      drawStar(ctx, bw * 1.5, bw * 1.5, sSize, '#D64045');
+      drawStar(ctx, w - bw * 1.5, h - bw * 1.5, sSize, '#D64045');
+      drawStar(ctx, w - bw * 1.5, bw * 1.5, sSize, '#F2EBE0');
+      drawStar(ctx, bw * 1.5, h - bw * 1.5, sSize, '#F2EBE0');
+      // Red accent line
+      ctx.strokeStyle = '#D64045';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bw + 4, bw + 4, w - bw * 2 - 8, h - bw * 2 - 8);
+    },
+  },
+  noodle: {
+    name: 'Noodle',
+    draw: (ctx, w, h) => {
+      // Pink/white border (Gohyang Noodle House theme)
+      const bw = Math.round(w * 0.035);
+      frameBorder(ctx, w, h, bw, '#FF69B4');
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bw + 2, bw + 2, w - bw * 2 - 4, h - bw * 2 - 4);
+      // Little hearts in pink
+      const hSize = Math.round(w * 0.015);
+      drawHeart(ctx, w * 0.1, h * 0.1, hSize, '#FF69B4');
+      drawHeart(ctx, w * 0.9, h * 0.1, hSize, '#FF69B4');
+      drawHeart(ctx, w * 0.1, h * 0.9, hSize, '#FF69B4');
+      drawHeart(ctx, w * 0.9, h * 0.9, hSize, '#FF69B4');
+    },
+  },
+
+  // ===== HELLO KITTY =====
+  kitty: {
+    name: 'Kitty',
+    draw: (ctx, w, h) => {
+      const bw = Math.round(w * 0.04);
+      // White border
+      frameBorder(ctx, w, h, bw, '#FFFFFF');
+      // Red bow in top-left corner (Hello Kitty signature)
+      const bSize = Math.round(w * 0.035);
+      drawMouseBow(ctx, bw + bSize * 1.5, bw + bSize * 1.5, bSize, '#D64045');
+      // Top-right bow
+      drawMouseBow(ctx, w - bw - bSize * 1.5, bw + bSize * 1.5, bSize, '#D64045');
+      // Bottom-left bow
+      drawMouseBow(ctx, bw + bSize * 1.5, h - bw - bSize * 1.5, bSize, '#D64045');
+      // Bottom-right bow
+      drawMouseBow(ctx, w - bw - bSize * 1.5, h - bw - bSize * 1.5, bSize, '#D64045');
+      // Tiny hearts
+      const hSize = Math.round(w * 0.012);
+      drawHeart(ctx, w / 2, bw + hSize * 2, hSize, '#FF69B4');
+      drawHeart(ctx, w / 2, h - bw - hSize * 2, hSize, '#FF69B4');
+    },
+  },
+  kittyPink: {
+    name: 'Pink',
+    draw: (ctx, w, h) => {
+      const bw = Math.round(w * 0.04);
+      // Pink border
+      frameBorder(ctx, w, h, bw, '#FFB6C1');
+      // White inner border
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(bw + 2, bw + 2, w - bw * 2 - 4, h - bw * 2 - 4);
+      // Bows in corners
+      const bSize = Math.round(w * 0.025);
+      drawMouseBow(ctx, bw + bSize * 2, bw + bSize * 2, bSize, '#D64045');
+      drawMouseBow(ctx, w - bw - bSize * 2, h - bw - bSize * 2, bSize, '#D64045');
+    },
+  },
+  sparkle: {
+    name: 'Sparkle',
+    draw: (ctx, w, h) => {
+      // Star/sparkle border (cute kawaii style)
+      const sSize = Math.round(w * 0.016);
+      const spacing = Math.round(w * 0.04);
+      // Top row
+      for (let x = spacing; x < w; x += spacing * 2) {
+        drawStar(ctx, x, spacing, sSize, '#FFD700');
+      }
+      // Bottom row
+      for (let x = spacing * 1.5; x < w; x += spacing * 2) {
+        drawStar(ctx, x, h - spacing, sSize, '#FF69B4');
+      }
+      // Left column
+      for (let y = spacing * 1.5; y < h - spacing; y += spacing * 2) {
+        drawStar(ctx, spacing, y, sSize, '#D64045');
+      }
+      // Right column
+      for (let y = spacing * 2; y < h - spacing; y += spacing * 2) {
+        drawStar(ctx, w - spacing, y, sSize, '#FFD700');
+      }
     },
   },
 };

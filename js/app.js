@@ -8,25 +8,27 @@ const app = {
   remoteStream: null,
   peer: null,
   peerConnection: null,
+  dataConnection: null,
   roomCode: null,
   isHost: false,
   facingMode: 'user',
-  
+
   // Current settings
   currentFilter: 'none',
   currentFrame: 'none',
   currentLayout: 'single',
   multiShots: [],        // accumulated captures for multi-shot layouts
   multiShotInProgress: false,
-  
+  multiShotCancelled: false,
+
   // Capture
   capturedImage: null,    // dataURL of last composited photo
   gallery: [],
-  
+
   // Canvas
   canvas: null,
   ctx: null,
-  
+
   // ===== INIT =====
   init() {
     this.canvas = document.getElementById('composite-canvas');
@@ -36,7 +38,7 @@ const app = {
     this.buildFrameChips();
     this.buildLayoutChips();
     this.loadGalleryPreview();
-    
+
     // Check URL for room code
     const params = new URLSearchParams(window.location.search);
     const code = params.get('room');
@@ -45,71 +47,100 @@ const app = {
       this.startTogether(true);
     }
   },
-  
+
   async loadGalleryPreview() {
     const preview = document.getElementById('gallery-preview');
     if (!preview) return;
-    
+
     let photos = [];
-    
+
     // Local photos
     if (this.gallery.length > 0) {
       photos = [...this.gallery.slice(0, 4)];
     }
-    
-    // Cloud photos
+
+    // Cloud photos (dedup by url)
     if (typeof storage !== 'undefined') {
-      const cloud = await storage.listPhotos();
-      cloud.slice(0, 4).forEach(cp => {
-        if (photos.length < 4) photos.push(cp);
-      });
+      try {
+        const cloud = await storage.listPhotos();
+        cloud.slice(0, 4).forEach(cp => {
+          if (photos.length < 4 && !photos.find(p => p.url === cp.url)) {
+            photos.push(cp);
+          }
+        });
+      } catch (e) { /* cloud unavailable, local only */ }
     }
-    
+
     if (photos.length === 0) return;
-    
+
     preview.innerHTML = '';
     photos.forEach(item => {
       const img = document.createElement('img');
       img.src = item.url;
       img.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;border:1px solid var(--fg);box-shadow:2px 2px 0 var(--fg);cursor:pointer';
       img.onclick = () => app.openGallery();
+      // Graceful fallback if image fails to load
+      img.onerror = () => { img.style.display = 'none'; };
       preview.appendChild(img);
     });
   },
-  
+
   // ===== SCREEN MANAGEMENT =====
   showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
+    const el = document.getElementById(id);
+    if (el) el.classList.add('active');
   },
-  
+
   goHome() {
     this.stopCamera();
-    if (this.peer) { try { this.peer.destroy(); } catch(e){} this.peer = null; }
+    this.cleanupPeer();
+    this.multiShotCancelled = true; // halt any in-progress multi-shot
+    this.multiShots = [];
+    this.multiShotInProgress = false;
     this.showScreen('landing');
+    this.loadGalleryPreview();
     // Clear URL
     window.history.replaceState({}, '', window.location.pathname);
   },
-  
+
+  cleanupPeer() {
+    if (this.dataConnection) {
+      try { this.dataConnection.close(); } catch(e) {}
+      this.dataConnection = null;
+    }
+    if (this.peer) {
+      try { this.peer.destroy(); } catch(e) {}
+      this.peer = null;
+    }
+    this.remoteStream = null;
+    this.hideRemote();
+    this.updateStatus('', 'READY');
+  },
+
   // ===== MODE SELECTION =====
   startSolo() {
     this.mode = 'solo';
     this.hideRemote();
     this.startCamera().then(() => {
       this.showScreen('stage');
+    }).catch(() => {
+      // Camera failed, error already shown
     });
   },
-  
+
   startTogether(joining = false) {
     this.mode = 'together';
-    
+
     if (joining) {
       // Joining existing room
       this.showScreen('room');
       document.getElementById('room-title').textContent = 'Join Room';
       document.getElementById('room-create').style.display = 'none';
       document.getElementById('room-join').style.display = 'block';
-      document.getElementById('room-code-input').focus();
+      const input = document.getElementById('room-code-input');
+      if (this.roomCode) input.value = this.roomCode;
+      input.focus();
     } else {
       // Create new room
       this.isHost = true;
@@ -119,22 +150,22 @@ const app = {
       document.getElementById('room-create').style.display = 'block';
       document.getElementById('room-join').style.display = 'none';
       document.getElementById('room-code-display').textContent = this.roomCode;
-      
+
       // Start camera + PeerJS
       this.startCamera().then(() => {
         this.initPeerJS();
-      });
+      }).catch(() => {});
     }
   },
-  
+
   // ===== CAMERA =====
   async startCamera() {
     try {
       this.localStream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: this.facingMode, 
-          width: { ideal: 1280 }, 
-          height: { ideal: 720 } 
+        video: {
+          facingMode: this.facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         },
         audio: this.mode === 'together',
       });
@@ -143,17 +174,19 @@ const app = {
       this.applyFilterToVideo();
     } catch (err) {
       alert('We need your camera for this to work.\n\nCheck your browser settings and try again.\n\nError: ' + err.message);
-      this.goHome();
+      throw err; // propagate so callers can react
     }
   },
-  
+
   stopCamera() {
     if (this.localStream) {
       this.localStream.getTracks().forEach(t => t.stop());
       this.localStream = null;
     }
+    const video = document.getElementById('local-video');
+    if (video) video.srcObject = null;
   },
-  
+
   async switchCamera() {
     this.facingMode = this.facingMode === 'user' ? 'environment' : 'user';
     if (this.localStream) {
@@ -164,25 +197,32 @@ const app = {
         const sender = this.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
         if (sender && this.localStream) {
           const newTrack = this.localStream.getVideoTracks()[0];
-          if (newTrack) sender.replaceTrack(newTrack);
+          if (newTrack) {
+            try { await sender.replaceTrack(newTrack); } catch(e) {}
+          }
         }
       }
     }
   },
-  
+
   hideRemote() {
-    document.getElementById('remote-half').style.display = 'none';
-    document.getElementById('video-divider').style.display = 'none';
+    const rh = document.getElementById('remote-half');
+    const vd = document.getElementById('video-divider');
+    if (rh) rh.style.display = 'none';
+    if (vd) vd.style.display = 'none';
   },
-  
+
   showRemote() {
-    document.getElementById('remote-half').style.display = 'block';
-    document.getElementById('video-divider').style.display = 'block';
+    const rh = document.getElementById('remote-half');
+    const vd = document.getElementById('video-divider');
+    if (rh) rh.style.display = 'block';
+    if (vd) vd.style.display = 'block';
   },
-  
+
   // ===== FILTERS UI =====
   buildFilterChips() {
     const row = document.getElementById('filter-row');
+    if (!row) return;
     row.innerHTML = '';
     for (const [key, f] of Object.entries(FILTERS)) {
       const chip = document.createElement('button');
@@ -193,7 +233,7 @@ const app = {
       row.appendChild(chip);
     }
   },
-  
+
   setFilter(key) {
     this.currentFilter = key;
     this.applyFilterToVideo();
@@ -201,21 +241,22 @@ const app = {
       c.classList.toggle('active', c.dataset.filter === key);
     });
   },
-  
+
   applyFilterToVideo() {
     const video = document.getElementById('local-video');
     const f = FILTERS[this.currentFilter];
-    if (f) {
+    if (f && video) {
       video.style.filter = f.css;
       // Also apply to remote video
       const remote = document.getElementById('remote-video');
       if (remote) remote.style.filter = f.css;
     }
   },
-  
+
   // ===== FRAMES UI =====
   buildFrameChips() {
     const row = document.getElementById('frame-row');
+    if (!row) return;
     row.innerHTML = '';
     for (const [key, f] of Object.entries(FRAMES)) {
       const chip = document.createElement('button');
@@ -226,14 +267,14 @@ const app = {
       row.appendChild(chip);
     }
   },
-  
+
   setFrame(key) {
     this.currentFrame = key;
     document.querySelectorAll('.frame-chip').forEach(c => {
       c.classList.toggle('active', c.dataset.frame === key);
     });
   },
-  
+
   // ===== LAYOUTS UI =====
   buildLayoutChips() {
     const row = document.getElementById('layout-row');
@@ -241,36 +282,39 @@ const app = {
     row.innerHTML = '';
     for (const [key, l] of Object.entries(LAYOUTS)) {
       const chip = document.createElement('button');
-      chip.className = 'frame-chip' + (key === this.currentLayout ? ' active' : '');
+      chip.className = 'frame-chip layout-chip' + (key === this.currentLayout ? ' active' : '');
       chip.textContent = l.name;
       chip.dataset.layout = key;
       chip.onclick = () => this.setLayout(key);
       row.appendChild(chip);
     }
   },
-  
+
   setLayout(key) {
     this.currentLayout = key;
     this.multiShots = [];
     this.multiShotInProgress = false;
-    document.querySelectorAll('.layout-chip, #layout-row .frame-chip').forEach(c => {
+    this.multiShotCancelled = false;
+    document.querySelectorAll('#layout-row .frame-chip').forEach(c => {
       c.classList.toggle('active', c.dataset.layout === key);
     });
     // Update shutter button label
     const layout = LAYOUTS[key];
     if (layout && layout.shots > 1) {
       document.getElementById('shutter-btn').title = `Shot 1 of ${layout.shots}`;
+    } else {
+      document.getElementById('shutter-btn').title = '';
     }
   },
-  
+
   // ===== COUNTDOWN =====
   async countdown(seconds = 3) {
     const overlay = document.getElementById('countdown-overlay');
     const numEl = document.getElementById('countdown-number');
     const flash = document.getElementById('flash');
-    
+
     overlay.classList.add('active');
-    
+
     return new Promise(resolve => {
       let count = seconds;
       const tick = () => {
@@ -296,72 +340,89 @@ const app = {
       tick();
     });
   },
-  
+
   // ===== CAPTURE =====
   async capture() {
-    document.getElementById('shutter-btn').disabled = true;
-    
+    const shutterBtn = document.getElementById('shutter-btn');
+    shutterBtn.disabled = true;
+
     const layout = LAYOUTS[this.currentLayout];
-    
-    if (layout && layout.shots > 1) {
-      // Multi-shot mode
-      await this.countdown(3);
-      
-      // Capture single frame to temp canvas
-      const shotData = this.captureSingleFrame();
-      this.multiShots.push(shotData);
-      
-      const shotNum = this.multiShots.length;
-      
-      if (shotNum < layout.shots) {
-        // More shots needed
-        document.getElementById('shutter-btn').title = `Shot ${shotNum + 1} of ${layout.shots}`;
-        // Quick visual feedback
-        this.flashFeedback();
-        document.getElementById('shutter-btn').disabled = false;
-        // Auto-countdown for next shot after 1.5s
-        setTimeout(() => this.capture(), 1500);
-        return;
+
+    try {
+      if (layout && layout.shots > 1) {
+        // Multi-shot mode
+        this.multiShotInProgress = true;
+        this.multiShotCancelled = false;
+
+        await this.countdown(3);
+
+        if (this.multiShotCancelled) return;
+
+        // Capture single frame to temp canvas
+        const shotData = this.captureSingleFrame();
+        this.multiShots.push(shotData);
+
+        const shotNum = this.multiShots.length;
+
+        if (shotNum < layout.shots) {
+          // More shots needed
+          shutterBtn.title = `Shot ${shotNum + 1} of ${layout.shots}`;
+          // Quick visual feedback
+          this.flashFeedback();
+          shutterBtn.disabled = false;
+          // Auto-countdown for next shot after a short breather
+          setTimeout(() => {
+            if (!this.multiShotCancelled) this.capture();
+          }, 1500);
+          return;
+        }
+
+        // All shots taken — composite them (await the async result!)
+        await this.compositeMultiShot();
+      } else {
+        // Single shot
+        await this.countdown(3);
+        if (this.multiShotCancelled) return;
+        this.composite();
       }
-      
-      // All shots taken — composite them
-      this.compositeMultiShot();
-    } else {
-      // Single shot
-      await this.countdown(3);
-      this.composite();
+
+      this.showReveal();
+      this.multiShots = [];
+      this.multiShotInProgress = false;
+    } catch (err) {
+      console.error('Capture error:', err);
+      alert('Something went wrong while capturing. Please try again.');
+    } finally {
+      shutterBtn.disabled = false;
     }
-    
-    this.showReveal();
-    this.multiShots = [];
-    document.getElementById('shutter-btn').disabled = false;
   },
-  
+
   flashFeedback() {
     const flash = document.getElementById('flash');
     flash.classList.add('active');
     setTimeout(() => flash.classList.remove('active'), 120);
   },
-  
+
   captureSingleFrame() {
     // Capture current video to a temp canvas, return dataURL
     const localVideo = document.getElementById('local-video');
     const remoteVideo = document.getElementById('remote-video');
-    const hasRemote = this.mode === 'together' && remoteVideo.srcObject;
-    
+    const hasRemote = this.mode === 'together' && remoteVideo && remoteVideo.srcObject;
+
     const tmp = document.createElement('canvas');
-    const W = hasRemote ? 1080 : 1080;
-    const H = hasRemote ? 1350 : 1350;
+    // Portrait aspect ratio 4:5 (1080×1350) for each shot
+    const W = 1080;
+    const H = 1350;
     tmp.width = W;
     tmp.height = H;
     const tctx = tmp.getContext('2d');
-    
+
     tctx.fillStyle = '#F2EBE0';
     tctx.fillRect(0, 0, W, H);
-    
+
     const filterDef = FILTERS[this.currentFilter];
     tctx.filter = filterDef ? filterDef.canvas : 'none';
-    
+
     if (hasRemote) {
       const gutter = 12;
       const halfW = (W - gutter) / 2;
@@ -370,108 +431,122 @@ const app = {
     } else {
       this.drawCover(tctx, localVideo, 0, 0, W, H);
     }
-    
+
+    tctx.filter = 'none';
     return tmp.toDataURL('image/jpeg', 0.92);
   },
-  
+
+  // Returns a Promise that resolves when compositing is complete
   compositeMultiShot() {
     const layout = LAYOUTS[this.currentLayout];
     const shots = this.multiShots;
     const W = 1080;
     let H;
-    
+
     // Calculate canvas size based on layout
     if (this.currentLayout === 'strip-4') {
-      H = Math.round(W * 4 * 0.7); // 4 tall
+      // Each cell is ~4:5 aspect, 4 stacked vertically + gaps
+      const gap = 16;
+      const cellW = W - gap * 2;
+      const cellH = Math.round(cellW * 5 / 4); // 4:5 per cell
+      H = cellH * 4 + gap * 5;
     } else if (this.currentLayout === 'strip-3') {
-      H = Math.round(W * 3 * 0.7);
+      const gap = 16;
+      const cellW = W - gap * 2;
+      const cellH = Math.round(cellW * 5 / 4);
+      H = cellH * 3 + gap * 4;
     } else if (this.currentLayout === 'grid-2x2') {
-      H = Math.round(W * 1.0); // square-ish
+      // Square canvas: 2 cols × 2 rows
+      H = W;
     } else {
       H = 1350;
     }
-    
+
     this.canvas.width = W;
     this.canvas.height = H;
     const ctx = this.ctx;
-    
+
     // Background
     ctx.fillStyle = '#F2EBE0';
     ctx.fillRect(0, 0, W, H);
-    
+
     const gap = 16;
-    
-    // Load all images then draw
-    const drawAll = (images) => {
-      if (this.currentLayout === 'strip-4' || this.currentLayout === 'strip-3') {
-        // Vertical strip
-        const cellH = (H - gap * (shots.length + 1)) / shots.length;
-        const cellW = W - gap * 2;
-        images.forEach((img, i) => {
-          const y = gap + i * (cellH + gap);
-          this.drawCover(ctx, img, gap, y, cellW, cellH);
+
+    // Load all images then draw — RETURN the promise so caller can await
+    return new Promise((resolve, reject) => {
+      const loadPromises = shots.map(dataURL => {
+        return new Promise((res, rej) => {
+          const img = new Image();
+          img.onload = () => res(img);
+          img.onerror = rej;
+          img.src = dataURL;
         });
-      } else if (this.currentLayout === 'grid-2x2') {
-        // 2x2 grid
-        const cellW = (W - gap * 3) / 2;
-        const cellH = (H - gap * 3) / 2;
-        images.forEach((img, i) => {
-          const col = i % 2;
-          const row = Math.floor(i / 2);
-          const x = gap + col * (cellW + gap);
-          const y = gap + row * (cellH + gap);
-          this.drawCover(ctx, img, x, y, cellW, cellH);
-        });
-      }
-      
-      // Draw frame on top
-      ctx.filter = 'none';
-      const frameDef = FRAMES[this.currentFrame];
-      if (frameDef) frameDef.draw(ctx, W, H);
-      
-      this.capturedImage = this.canvas.toDataURL('image/jpeg', 0.92);
-    };
-    
-    // Load all images
-    const loadPromises = shots.map(dataURL => {
-      return new Promise(resolve => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.src = dataURL;
       });
+
+      Promise.all(loadPromises).then(images => {
+        // No filter on composite level — each shot already has filter baked in
+        ctx.filter = 'none';
+
+        if (this.currentLayout === 'strip-4' || this.currentLayout === 'strip-3') {
+          // Vertical strip
+          const cellH = (H - gap * (shots.length + 1)) / shots.length;
+          const cellW = W - gap * 2;
+          images.forEach((img, i) => {
+            const y = gap + i * (cellH + gap);
+            this.drawCover(ctx, img, gap, y, cellW, cellH);
+          });
+        } else if (this.currentLayout === 'grid-2x2') {
+          // 2x2 grid
+          const cellW = (W - gap * 3) / 2;
+          const cellH = (H - gap * 3) / 2;
+          images.forEach((img, i) => {
+            const col = i % 2;
+            const row = Math.floor(i / 2);
+            const x = gap + col * (cellW + gap);
+            const y = gap + row * (cellH + gap);
+            this.drawCover(ctx, img, x, y, cellW, cellH);
+          });
+        }
+
+        // Draw frame on top
+        ctx.filter = 'none';
+        const frameDef = FRAMES[this.currentFrame];
+        if (frameDef) frameDef.draw(ctx, W, H);
+
+        this.capturedImage = this.canvas.toDataURL('image/jpeg', 0.92);
+        resolve();
+      }).catch(reject);
     });
-    
-    Promise.all(loadPromises).then(drawAll);
   },
-  
+
   // ===== COMPOSITE (canvas) =====
   composite() {
     const localVideo = document.getElementById('local-video');
     const remoteVideo = document.getElementById('remote-video');
-    const hasRemote = this.mode === 'together' && remoteVideo.srcObject;
-    
+    const hasRemote = this.mode === 'together' && remoteVideo && remoteVideo.srcObject;
+
     // Canvas dimensions (portrait for photobooth feel)
     const W = 1080;
-    const H = hasRemote ? 1350 : 1350;
-    
+    const H = 1350;
+
     this.canvas.width = W;
     this.canvas.height = H;
     const ctx = this.ctx;
-    
+
     // Fill background
     ctx.fillStyle = '#F2EBE0';
     ctx.fillRect(0, 0, W, H);
-    
+
     // Apply filter
     const filterDef = FILTERS[this.currentFilter];
     ctx.filter = filterDef ? filterDef.canvas : 'none';
-    
+
     if (hasRemote) {
       // Dual mode — side by side
       const gutter = 12;
       const halfW = (W - gutter) / 2;
-      
-      // Local (left) — un-mirror for export
+
+      // Local (left) — un-mirror for export (video is CSS-mirrored but canvas draws raw)
       this.drawCover(ctx, localVideo, 0, 0, halfW, H);
       // Remote (right)
       this.drawCover(ctx, remoteVideo, halfW + gutter, 0, halfW, H);
@@ -479,26 +554,26 @@ const app = {
       // Solo mode — full frame
       this.drawCover(ctx, localVideo, 0, 0, W, H);
     }
-    
+
     // Reset filter for frame
     ctx.filter = 'none';
-    
+
     // Draw frame
     const frameDef = FRAMES[this.currentFrame];
     if (frameDef) frameDef.draw(ctx, W, H);
-    
+
     // Store result
     this.capturedImage = this.canvas.toDataURL('image/jpeg', 0.92);
   },
-  
+
   drawCover(ctx, source, x, y, w, h) {
     // Object-fit: cover math
-    const sw = source.videoWidth || source.width || 1280;
-    const sh = source.videoHeight || source.height || 720;
+    const sw = source.videoWidth || source.width || source.naturalWidth || 1280;
+    const sh = source.videoHeight || source.height || source.naturalHeight || 720;
     const sRatio = sw / sh;
     const dRatio = w / h;
     let sx, sy, sWidth, sHeight;
-    
+
     if (sRatio > dRatio) {
       // Source is wider — crop sides
       sHeight = sh;
@@ -512,18 +587,23 @@ const app = {
       sx = 0;
       sy = (sh - sHeight) / 2;
     }
-    
+
     ctx.drawImage(source, sx, sy, sWidth, sHeight, x, y, w, h);
   },
-  
+
   // ===== REVEAL =====
   showReveal() {
+    if (!this.capturedImage) {
+      console.error('No captured image to show');
+      return;
+    }
+
     this.showScreen('reveal');
-    
+
     const polaroid = document.getElementById('reveal-polaroid');
     const canvas = document.getElementById('reveal-canvas');
     const dateEl = document.getElementById('reveal-date');
-    
+
     // Draw captured image to reveal canvas
     const img = new Image();
     img.onload = () => {
@@ -531,42 +611,43 @@ const app = {
       canvas.height = img.height;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0);
-      
+
       // Trigger develop animation
       polaroid.classList.remove('developed');
       setTimeout(() => polaroid.classList.add('developed'), 100);
     };
+    img.onerror = () => console.error('Failed to load captured image for reveal');
     img.src = this.capturedImage;
-    
+
     // Date stamp
     const now = new Date();
-    const dateStr = now.toLocaleDateString('en-US', { 
-      month: 'long', day: 'numeric', year: 'numeric' 
+    const dateStr = now.toLocaleDateString('en-US', {
+      month: 'long', day: 'numeric', year: 'numeric'
     });
-    const timeStr = now.toLocaleTimeString('en-US', { 
-      hour: 'numeric', minute: '2-digit' 
+    const timeStr = now.toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit'
     });
     dateEl.textContent = `${dateStr} · ${timeStr}`;
-    
+
     // Slight random rotation
     const rot = (Math.random() - 0.5) * 3;
     polaroid.style.transform = `rotate(${rot}deg)`;
-    
+
     // Save to gallery (local + cloud)
     this.addToGallery(this.capturedImage);
-    
+
     // Upload to Supabase (cloud gallery)
     if (typeof storage !== 'undefined') {
       storage.upload(this.capturedImage).then(url => {
         if (url) console.log('Photo saved to cloud');
-      });
+      }).catch(e => console.error('Cloud upload failed:', e));
     }
   },
-  
+
   retake() {
     this.showScreen('stage');
   },
-  
+
   // ===== DOWNLOAD =====
   downloadPhoto() {
     if (!this.capturedImage) return;
@@ -576,69 +657,79 @@ const app = {
     link.href = this.capturedImage;
     link.click();
   },
-  
+
   // ===== GALLERY =====
   addToGallery(dataURL) {
     this.gallery.unshift({ url: dataURL, time: Date.now() });
     this.saveGallery();
   },
-  
+
   saveGallery() {
     try {
-      // Only keep last 20 to avoid localStorage limits
+      // Only keep last 20 to avoid localStorage limits (~5MB)
       const recent = this.gallery.slice(0, 20);
       localStorage.setItem('us_gallery', JSON.stringify(recent));
     } catch(e) { /* localStorage full, skip */ }
   },
-  
+
   loadGallery() {
     try {
       const stored = localStorage.getItem('us_gallery');
       if (stored) this.gallery = JSON.parse(stored);
     } catch(e) { this.gallery = []; }
   },
-  
+
   async openGallery() {
     this.showScreen('gallery-screen');
     const grid = document.getElementById('gallery-grid');
     grid.innerHTML = '<p class="gallery-empty">Loading your moments...</p>';
-    
-    // Load both local + cloud photos
+
+    // Load both local + cloud photos (dedup by url)
     let photos = [...this.gallery];
-    
+
     // Try loading from Supabase
     if (typeof storage !== 'undefined') {
-      const cloudPhotos = await storage.listPhotos();
-      cloudPhotos.forEach(cp => {
-        if (!photos.find(p => p.url === cp.url)) {
-          photos.push(cp);
-        }
-      });
+      try {
+        const cloudPhotos = await storage.listPhotos();
+        cloudPhotos.forEach(cp => {
+          if (!photos.find(p => p.url === cp.url)) {
+            photos.push(cp);
+          }
+        });
+      } catch (e) { /* cloud unavailable */ }
     }
-    
+
     if (photos.length === 0) {
       grid.innerHTML = '<p class="gallery-empty">No memories yet.<br>Take one together.</p>';
       return;
     }
-    
+
     // Sort newest first
-    photos.sort((a, b) => (b.time || 0) - (a.time || 0));
-    
+    photos.sort((a, b) => (b.time || b.created || 0) - (a.time || a.created || 0));
+
     grid.innerHTML = '';
     photos.forEach((item, idx) => {
       const wrapper = document.createElement('div');
       wrapper.style.cssText = 'position:relative';
-      
+
       const div = document.createElement('div');
       div.className = 'gallery-item';
       div.onclick = () => {
+        // Safe open — use DOM API, no innerHTML injection
         const w = window.open('', '_blank');
-        w.document.write(`<img src="${item.url}" style="width:100%">`);
+        if (w) {
+          const imgEl = w.document.createElement('img');
+          imgEl.src = item.url;
+          imgEl.style.cssText = 'width:100%;height:auto;display:block';
+          w.document.body.style.margin = '0';
+          w.document.body.appendChild(imgEl);
+        }
       };
       const img = document.createElement('img');
       img.src = item.url;
+      img.loading = 'lazy';
       div.appendChild(img);
-      
+
       // Delete button
       const delBtn = document.createElement('button');
       delBtn.innerHTML = '✕';
@@ -649,13 +740,13 @@ const app = {
           app.deletePhoto(item, idx, wrapper);
         }
       };
-      
+
       wrapper.appendChild(div);
       wrapper.appendChild(delBtn);
       grid.appendChild(wrapper);
     });
   },
-  
+
   async deletePhoto(item, idx, element) {
     // Remove from local gallery
     const localIdx = this.gallery.findIndex(g => g.url === item.url);
@@ -671,7 +762,7 @@ const app = {
     if (element) element.remove();
     console.log('Photo deleted');
   },
-  
+
   // ===== ROOM CODE =====
   generateRoomCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/O/0/1
@@ -681,32 +772,43 @@ const app = {
     }
     return code;
   },
-  
+
   copyRoomCode() {
     const url = `${window.location.origin}${window.location.pathname}?room=${this.roomCode}`;
     if (navigator.share) {
       navigator.share({ title: 'us', text: 'come take a photo with me', url });
-    } else {
+    } else if (navigator.clipboard) {
       navigator.clipboard.writeText(url).then(() => {
         alert('Link copied! Send it to your person.');
+      }).catch(() => {
+        // Fallback for browsers without clipboard API
+        prompt('Copy this link:', url);
       });
+    } else {
+      prompt('Copy this link:', url);
     }
   },
-  
+
   joinRoom() {
     const code = document.getElementById('room-code-input').value.toUpperCase().trim();
-    if (code.length < 5) return;
+    if (code.length < 5) {
+      alert('Please enter the 5-character code.');
+      return;
+    }
     this.roomCode = code;
     this.isHost = false;
-    
+
     this.startCamera().then(() => {
       this.showScreen('stage');
       this.initPeerJS();
-    });
+    }).catch(() => {});
   },
-  
+
   // ===== WEBRTC (PeerJS) =====
   initPeerJS() {
+    // Clean up any existing peer
+    this.cleanupPeer();
+
     const peerId = `us-${this.roomCode}-${this.isHost ? 'host' : 'guest'}`;
     this.peer = new Peer(peerId, {
       config: {
@@ -714,82 +816,122 @@ const app = {
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
           { urls: 'stun:stun2.l.google.com:19302' },
-          // Free TURN relay
+          // Free TURN relay (may be unreliable — consider a paid TURN for production)
           { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
           { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
           { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
         ],
       },
     });
-    
+
+    // Register ALL event handlers immediately (not inside 'open')
+    // to avoid missing events due to race conditions.
+
     this.peer.on('open', (id) => {
       this.updateStatus('connecting', 'CONNECTING');
-      
+
       if (this.isHost) {
-        // Host waits for guest to connect
-        this.peer.on('connection', (conn) => {
-          this.dataConnection = conn;
-          conn.on('open', () => {
-            this.connectToPeer(conn.peer);
-          });
-        });
-        this.peer.on('call', (call) => {
-          call.answer(this.localStream);
-          call.on('stream', (remoteStream) => {
-            this.onRemoteStream(remoteStream);
-          });
-        });
+        // Host waits for guest. Data connection + call handlers are below.
+        this.updateStatus('connecting', 'WAITING');
       } else {
-        // Guest connects to host
+        // Guest connects to host's data channel
         const hostId = `us-${this.roomCode}-host`;
-        const conn = this.peer.connect(hostId);
-        this.dataConnection = conn;
+        const conn = this.peer.connect(hostId, { reliable: true });
+        this.setupDataConnection(conn);
+
+        // When data channel opens, call the host with our stream
         conn.on('open', () => {
-          // Call the host with our stream
           const call = this.peer.call(hostId, this.localStream);
-          call.on('stream', (remoteStream) => {
-            this.onRemoteStream(remoteStream);
-          });
+          if (call) {
+            this.setupCall(call);
+          }
         });
       }
     });
-    
-    // Handle incoming capture requests via data connection
-    if (this.dataConnection) {
-      this.dataConnection.on('data', (data) => {
-        if (data && data.action === 'capture') {
-          this.handleSyncedCapture(data.captureTime);
-        }
-      });
-    }
-    
+
+    // HOST: receive data connection from guest
+    this.peer.on('connection', (conn) => {
+      this.setupDataConnection(conn);
+    });
+
+    // BOTH: handle incoming media call (answer with our stream)
+    this.peer.on('call', (call) => {
+      call.answer(this.localStream);
+      this.setupCall(call);
+    });
+
     this.peer.on('error', (err) => {
       console.error('PeerJS error:', err);
-      this.updateStatus('error', 'CONNECTION ERROR');
+      this.updateStatus('error', 'ERROR');
+
       if (err.type === 'peer-unavailable') {
         alert('Room not found. Check the code and try again.');
         this.goHome();
+      } else if (err.type === 'unavailable-id') {
+        // Another tab/window already has this peer ID
+        alert('This room is already open in another tab. Please close it and try again.');
+        this.goHome();
+      } else if (err.type === 'network' || err.type === 'server-error') {
+        alert('Connection issue. Please check your internet and try again.');
+      }
+    });
+
+    this.peer.on('disconnected', () => {
+      // Attempt reconnection
+      if (this.peer && !this.peer.destroyed) {
+        try { this.peer.reconnect(); } catch(e) {}
       }
     });
   },
-  
-  connectToPeer(peerId) {
-    // Host calls the guest
-    const call = this.peer.call(peerId, this.localStream);
+
+  setupDataConnection(conn) {
+    this.dataConnection = conn;
+
+    conn.on('open', () => {
+      if (this.isHost) {
+        // Host now calls the guest (one-directional call to avoid glare)
+        const call = this.peer.call(conn.peer, this.localStream);
+        if (call) this.setupCall(call);
+      }
+      this.updateStatus('connected', this.mode === 'together' ? 'PAIRED' : 'CONNECTED');
+    });
+
+    conn.on('data', (data) => {
+      if (data && data.action === 'capture') {
+        this.handleSyncedCapture(data.captureTime);
+      }
+    });
+
+    conn.on('close', () => {
+      this.dataConnection = null;
+      this.updateStatus('', 'DISCONNECTED');
+      // Don't auto-goHome — let user decide
+    });
+
+    conn.on('error', (err) => {
+      console.error('Data connection error:', err);
+    });
+  },
+
+  setupCall(call) {
     call.on('stream', (remoteStream) => {
       this.onRemoteStream(remoteStream);
     });
+    call.on('error', (err) => {
+      console.error('Call error:', err);
+    });
   },
-  
+
   onRemoteStream(stream) {
     this.remoteStream = stream;
     const remoteVideo = document.getElementById('remote-video');
+    if (!remoteVideo) return;
     remoteVideo.srcObject = stream;
     this.showRemote();
     this.updateStatus('connected', 'CONNECTED');
     this.playConnectSound();
   },
-  
+
   // ===== SYNCED CAPTURE (for together mode) =====
   handleSyncedCapture(captureTime) {
     const delay = captureTime - Date.now();
@@ -799,38 +941,46 @@ const app = {
       this.capture();
     }
   },
-  
+
   requestSyncedCapture() {
     if (this.dataConnection && this.dataConnection.open) {
-      const captureTime = Date.now() + 3500; // 3.5s from now
+      const captureTime = Date.now() + 3500; // 3.5s from now (3s countdown + buffer)
       this.dataConnection.send({ action: 'capture', captureTime });
       this.handleSyncedCapture(captureTime);
     } else {
+      // Not connected or solo — just capture locally
       this.capture();
     }
   },
-  
+
   // ===== STATUS =====
   updateStatus(state, text) {
     const dot = document.getElementById('status-dot');
     const txt = document.getElementById('status-text');
-    dot.className = 'status-dot ' + state;
-    txt.textContent = text;
+    if (dot) dot.className = 'status-dot ' + state;
+    if (txt) txt.textContent = text;
   },
-  
+
   // ===== SOUNDS (Web Audio API) =====
   audioCtx: null,
-  
+
   getAudio() {
     if (!this.audioCtx) {
-      this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      this.audioCtx = new AC();
+    }
+    // Resume if suspended (autoplay policy)
+    if (this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume();
     }
     return this.audioCtx;
   },
-  
+
   playTickSound() {
     try {
       const ctx = this.getAudio();
+      if (!ctx) return;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
@@ -842,10 +992,11 @@ const app = {
       osc.stop(ctx.currentTime + 0.2);
     } catch(e) {}
   },
-  
+
   playShutterSound() {
     try {
       const ctx = this.getAudio();
+      if (!ctx) return;
       // Two quick clicks for mechanical shutter feel
       for (let i = 0; i < 2; i++) {
         const osc = ctx.createOscillator();
@@ -862,10 +1013,11 @@ const app = {
       }
     } catch(e) {}
   },
-  
+
   playConnectSound() {
     try {
       const ctx = this.getAudio();
+      if (!ctx) return;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);

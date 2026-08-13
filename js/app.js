@@ -15,6 +15,9 @@ const app = {
   // Current settings
   currentFilter: 'none',
   currentFrame: 'none',
+  currentLayout: 'single',
+  multiShots: [],        // accumulated captures for multi-shot layouts
+  multiShotInProgress: false,
   
   // Capture
   capturedImage: null,    // dataURL of last composited photo
@@ -31,6 +34,7 @@ const app = {
     this.loadGallery();
     this.buildFilterChips();
     this.buildFrameChips();
+    this.buildLayoutChips();
     this.loadGalleryPreview();
     
     // Check URL for room code
@@ -230,6 +234,35 @@ const app = {
     });
   },
   
+  // ===== LAYOUTS UI =====
+  buildLayoutChips() {
+    const row = document.getElementById('layout-row');
+    if (!row) return;
+    row.innerHTML = '';
+    for (const [key, l] of Object.entries(LAYOUTS)) {
+      const chip = document.createElement('button');
+      chip.className = 'frame-chip' + (key === this.currentLayout ? ' active' : '');
+      chip.textContent = l.name;
+      chip.dataset.layout = key;
+      chip.onclick = () => this.setLayout(key);
+      row.appendChild(chip);
+    }
+  },
+  
+  setLayout(key) {
+    this.currentLayout = key;
+    this.multiShots = [];
+    this.multiShotInProgress = false;
+    document.querySelectorAll('.layout-chip, #layout-row .frame-chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.layout === key);
+    });
+    // Update shutter button label
+    const layout = LAYOUTS[key];
+    if (layout && layout.shots > 1) {
+      document.getElementById('shutter-btn').title = `Shot 1 of ${layout.shots}`;
+    }
+  },
+  
   // ===== COUNTDOWN =====
   async countdown(seconds = 3) {
     const overlay = document.getElementById('countdown-overlay');
@@ -268,15 +301,147 @@ const app = {
   async capture() {
     document.getElementById('shutter-btn').disabled = true;
     
-    // Countdown
-    await this.countdown(3);
+    const layout = LAYOUTS[this.currentLayout];
     
-    // Composite to canvas
-    this.composite();
+    if (layout && layout.shots > 1) {
+      // Multi-shot mode
+      await this.countdown(3);
+      
+      // Capture single frame to temp canvas
+      const shotData = this.captureSingleFrame();
+      this.multiShots.push(shotData);
+      
+      const shotNum = this.multiShots.length;
+      
+      if (shotNum < layout.shots) {
+        // More shots needed
+        document.getElementById('shutter-btn').title = `Shot ${shotNum + 1} of ${layout.shots}`;
+        // Quick visual feedback
+        this.flashFeedback();
+        document.getElementById('shutter-btn').disabled = false;
+        // Auto-countdown for next shot after 1.5s
+        setTimeout(() => this.capture(), 1500);
+        return;
+      }
+      
+      // All shots taken — composite them
+      this.compositeMultiShot();
+    } else {
+      // Single shot
+      await this.countdown(3);
+      this.composite();
+    }
     
-    // Show reveal
     this.showReveal();
+    this.multiShots = [];
     document.getElementById('shutter-btn').disabled = false;
+  },
+  
+  flashFeedback() {
+    const flash = document.getElementById('flash');
+    flash.classList.add('active');
+    setTimeout(() => flash.classList.remove('active'), 120);
+  },
+  
+  captureSingleFrame() {
+    // Capture current video to a temp canvas, return dataURL
+    const localVideo = document.getElementById('local-video');
+    const remoteVideo = document.getElementById('remote-video');
+    const hasRemote = this.mode === 'together' && remoteVideo.srcObject;
+    
+    const tmp = document.createElement('canvas');
+    const W = hasRemote ? 1080 : 1080;
+    const H = hasRemote ? 1350 : 1350;
+    tmp.width = W;
+    tmp.height = H;
+    const tctx = tmp.getContext('2d');
+    
+    tctx.fillStyle = '#F2EBE0';
+    tctx.fillRect(0, 0, W, H);
+    
+    const filterDef = FILTERS[this.currentFilter];
+    tctx.filter = filterDef ? filterDef.canvas : 'none';
+    
+    if (hasRemote) {
+      const gutter = 12;
+      const halfW = (W - gutter) / 2;
+      this.drawCover(tctx, localVideo, 0, 0, halfW, H);
+      this.drawCover(tctx, remoteVideo, halfW + gutter, 0, halfW, H);
+    } else {
+      this.drawCover(tctx, localVideo, 0, 0, W, H);
+    }
+    
+    return tmp.toDataURL('image/jpeg', 0.92);
+  },
+  
+  compositeMultiShot() {
+    const layout = LAYOUTS[this.currentLayout];
+    const shots = this.multiShots;
+    const W = 1080;
+    let H;
+    
+    // Calculate canvas size based on layout
+    if (this.currentLayout === 'strip-4') {
+      H = Math.round(W * 4 * 0.7); // 4 tall
+    } else if (this.currentLayout === 'strip-3') {
+      H = Math.round(W * 3 * 0.7);
+    } else if (this.currentLayout === 'grid-2x2') {
+      H = Math.round(W * 1.0); // square-ish
+    } else {
+      H = 1350;
+    }
+    
+    this.canvas.width = W;
+    this.canvas.height = H;
+    const ctx = this.ctx;
+    
+    // Background
+    ctx.fillStyle = '#F2EBE0';
+    ctx.fillRect(0, 0, W, H);
+    
+    const gap = 16;
+    
+    // Load all images then draw
+    const drawAll = (images) => {
+      if (this.currentLayout === 'strip-4' || this.currentLayout === 'strip-3') {
+        // Vertical strip
+        const cellH = (H - gap * (shots.length + 1)) / shots.length;
+        const cellW = W - gap * 2;
+        images.forEach((img, i) => {
+          const y = gap + i * (cellH + gap);
+          this.drawCover(ctx, img, gap, y, cellW, cellH);
+        });
+      } else if (this.currentLayout === 'grid-2x2') {
+        // 2x2 grid
+        const cellW = (W - gap * 3) / 2;
+        const cellH = (H - gap * 3) / 2;
+        images.forEach((img, i) => {
+          const col = i % 2;
+          const row = Math.floor(i / 2);
+          const x = gap + col * (cellW + gap);
+          const y = gap + row * (cellH + gap);
+          this.drawCover(ctx, img, x, y, cellW, cellH);
+        });
+      }
+      
+      // Draw frame on top
+      ctx.filter = 'none';
+      const frameDef = FRAMES[this.currentFrame];
+      if (frameDef) frameDef.draw(ctx, W, H);
+      
+      this.capturedImage = this.canvas.toDataURL('image/jpeg', 0.92);
+    };
+    
+    // Load all images
+    const loadPromises = shots.map(dataURL => {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.src = dataURL;
+      });
+    });
+    
+    Promise.all(loadPromises).then(drawAll);
   },
   
   // ===== COMPOSITE (canvas) =====
@@ -460,19 +625,49 @@ const app = {
     photos.sort((a, b) => (b.time || 0) - (a.time || 0));
     
     grid.innerHTML = '';
-    photos.forEach(item => {
+    photos.forEach((item, idx) => {
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'position:relative';
+      
       const div = document.createElement('div');
       div.className = 'gallery-item';
       div.onclick = () => {
-        // Open full size
         const w = window.open('', '_blank');
         w.document.write(`<img src="${item.url}" style="width:100%">`);
       };
       const img = document.createElement('img');
       img.src = item.url;
       div.appendChild(img);
-      grid.appendChild(div);
+      
+      // Delete button
+      const delBtn = document.createElement('button');
+      delBtn.innerHTML = '✕';
+      delBtn.style.cssText = 'position:absolute;top:4px;right:4px;width:28px;height:28px;background:rgba(24,20,16,0.8);color:#F2EBE0;border:1px solid #F2EBE0;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;z-index:5';
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (confirm('Delete this photo?')) {
+          app.deletePhoto(item, idx, wrapper);
+        }
+      };
+      
+      wrapper.appendChild(div);
+      wrapper.appendChild(delBtn);
+      grid.appendChild(wrapper);
     });
+  },
+  
+  deletePhoto(item, idx, element) {
+    // Remove from local gallery
+    const localIdx = this.gallery.findIndex(g => g.url === item.url);
+    if (localIdx >= 0) {
+      this.gallery.splice(localIdx, 1);
+      this.saveGallery();
+    }
+    // Remove from DOM
+    if (element) element.remove();
+    // Note: Supabase deletion would need service_role key (can't do from client safely)
+    // For now, local delete is enough — cloud copy stays but is removed from view
+    console.log('Photo deleted from gallery');
   },
   
   // ===== ROOM CODE =====

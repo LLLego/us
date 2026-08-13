@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>us — two places, one frame</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&family=Caveat:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<!-- ===== LANDING ===== -->
+<div id="landing" class="screen active">
+<h1 class="logo">us</h1>
+<p class="tagline">two places, one frame</p>
+<div class="mode-buttons">
+<button class="btn btn-primary btn-large" onclick="app.startSolo()">Just Me</button>
+<button class="btn btn-secondary btn-large" onclick="app.startTogether()">Together</button>
+</div>
+<p class="footer-note">made by hand, for someone far away</p>
+</div>
+
+<!-- ===== ROOM (Together mode) ===== -->
+<div id="room" class="screen">
+<h2 class="room-title" id="room-title">Create a Room</h2>
+<div id="room-create">
+<p style="margin-bottom:24px;opacity:0.6;text-align:center">Share the code with your person.</p>
+<div class="room-code-box" id="room-code-display">------</div>
+<button class="btn btn-primary" style="margin-top:24px" onclick="app.copyRoomCode()">Copy Link</button>
+<div class="waiting-dots" style="margin-top:32px"><span></span><span></span><span></span></div>
+<p style="margin-top:16px;opacity:0.5;font-size:14px">Waiting for them...</p>
+</div>
+<div id="room-join" style="display:none">
+<p style="margin-bottom:24px;opacity:0.6;text-align:center">Enter the code your person sent you.</p>
+<input class="room-input" id="room-code-input" maxlength="5" placeholder="XXXXX" oninput="this.value=this.value.toUpperCase()">
+<button class="btn btn-primary" style="margin-top:24px" onclick="app.joinRoom()">Join</button>
+</div>
+<button class="btn" style="position:absolute;top:24px;left:24px;font-size:14px;padding:8px 16px" onclick="app.goHome()">← Back</button>
+</div>
+
+<!-- ===== STAGE (Camera) ===== -->
+<div id="stage" class="screen">
+<div class="stage-topbar">
+<div class="status-pill"><span class="status-dot" id="status-dot"></span><span id="status-text">READY</span></div>
+<button class="exit-btn" onclick="app.goHome()">✕</button>
+</div>
+
+<div class="video-container" id="video-container">
+<div class="video-half local">
+<video id="local-video" autoplay playsinline muted></video>
+<span class="video-label">YOU</span>
+<span class="crosshair tl"></span><span class="crosshair tr"></span>
+<span class="crosshair bl"></span><span class="crosshair br"></span>
+</div>
+<div class="video-divider" id="video-divider"></div>
+<div class="video-half remote" id="remote-half" style="display:none">
+<video id="remote-video" autoplay playsinline></video>
+<span class="video-label">THEM</span>
+</div>
+</div>
+
+<div class="controls-row">
+<div class="filter-row" id="filter-row"></div>
+<div class="frame-row" id="frame-row"></div>
+</div>
+
+<div class="controls-bar">
+<button class="btn" style="font-size:14px" onclick="app.openGallery()">Gallery</button>
+<button class="shutter-btn" id="shutter-btn" onclick="app.capture()"></button>
+<button class="btn" style="font-size:14px" onclick="app.switchCamera()">Flip</button>
+</div>
+</div>
+
+<!-- ===== COUNTDOWN OVERLAY ===== -->
+<div id="countdown-overlay">
+<div class="countdown-number" id="countdown-number">3</div>
+<div class="countdown-subtitle">say cheese together</div>
+</div>
+
+<!-- ===== FLASH ===== -->
+<div id="flash"></div>
+
+<!-- ===== REVEAL ===== -->
+<div id="reveal" class="screen">
+<div class="reveal-polaroid" id="reveal-polaroid">
+<canvas id="reveal-canvas"></canvas>
+<div class="reveal-date" id="reveal-date"></div>
+</div>
+<div class="reveal-actions">
+<button class="btn btn-primary" onclick="app.downloadPhoto()">Save Photo</button>
+<button class="btn" onclick="app.retake()">Take Another</button>
+<button class="btn" onclick="app.openGallery()">Gallery</button>
+</div>
+</div>
+
+<!-- ===== GALLERY ===== -->
+<div id="gallery-screen" class="screen">
+<h2 class="gallery-header">Your Moments</h2>
+<div class="gallery-grid" id="gallery-grid"></div>
+<button class="btn" style="margin-top:24px" onclick="app.goHome()">← Home</button>
+</div>
+
+<!-- ===== HIDDEN CANVAS for compositing ===== -->
+<canvas id="composite-canvas" style="display:none"></canvas>
+
+<!-- ===== SCRIPTS ===== -->
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="js/filters.js"></script>
+<script src="js/frames.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

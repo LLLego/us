@@ -6,24 +6,114 @@
 <title>us — two places, one frame</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&family=Caveat:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,700;0,9..144,900;1,9..144,300;1,9..144,400;1,9..144,700&family=Inter:wght@300;400;500;600&family=Space+Mono:wght@400;700&family=Caveat:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
 
-<!-- ===== LANDING ===== -->
-<div id="landing" class="screen active">
-<h1 class="logo">us</h1>
-<p class="tagline">two places, one frame</p>
-<div class="mode-buttons">
-<button class="btn btn-primary btn-large" onclick="app.startSolo()">Just Me</button>
-<button class="btn btn-secondary btn-large" onclick="app.startTogether()">Together</button>
+<!-- ===== HOMEPAGE ===== -->
+<div id="landing" class="screen active" style="justify-content:flex-start;padding:0;gap:0">
+
+<!-- Topbar -->
+<div style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--fg)">
+<a href="#" style="font-family:'Fraunces',serif;font-size:28px;font-weight:400;letter-spacing:-0.04em;text-decoration:none;color:var(--fg);font-variation-settings:'opsz' 9">us<span style="color:var(--accent)">.</span></a>
+<button class="btn" style="font-size:11px;padding:8px 14px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.1em" onclick="app.openGallery()">Gallery →</button>
 </div>
-<p class="footer-note">made by hand, for someone far away</p>
+
+<!-- Hero -->
+<div style="padding:48px 24px 56px;max-width:680px;margin:0 auto;width:100%">
+<div style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.16em;color:rgba(24,20,16,0.5);margin-bottom:24px;display:flex;align-items:center;gap:10px">
+<span style="display:inline-block;width:28px;height:1px;background:var(--fg)"></span>
+a room for two
+</div>
+<h1 style="font-family:'Fraunces',serif;font-size:clamp(42px,11vw,88px);font-weight:400;line-height:0.94;letter-spacing:-0.035em;font-variation-settings:'opsz' 144;margin-bottom:20px">
+two places.<br>
+<em style="font-style:italic;font-weight:300;color:var(--accent)">one frame.</em>
+</h1>
+<p style="font-size:16px;line-height:1.55;color:rgba(24,20,16,0.6);max-width:380px;margin-bottom:8px">
+Open a link on your phone. See each other. Count down together. Capture one frame — the two of you, across any distance.
+</p>
+<p style="font-family:'Caveat',cursive;font-size:22px;color:rgba(24,20,16,0.5);margin-top:12px">made by hand, for someone far away</p>
+</div>
+
+<!-- Entry Cards -->
+<div style="padding:0 24px 64px;max-width:680px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:20px">
+
+<!-- Together (primary) -->
+<div onclick="app.startTogether()" style="background:var(--fg);color:var(--bg);border:1px solid var(--fg);padding:28px;box-shadow:var(--shadow-hard);cursor:pointer;transition:transform 0.3s cubic-bezier(.2,.7,.2,1);position:relative" onmouseover="this.style.transform='translate(-2px,-4px)';this.style.boxShadow='10px 12px 0 var(--fg)'" onmouseout="this.style.transform='';this.style.boxShadow='var(--shadow-hard)'">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+<span style="font-family:'Fraunces',serif;font-size:14px;font-weight:400;border-bottom:1px solid rgba(242,235,224,0.3);padding-bottom:2px">01</span>
+<span style="font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:0.12em;opacity:0.5">LIVE · DUAL CAMERA</span>
+</div>
+<!-- Mini diagram -->
+<div style="height:64px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;gap:4px">
+<div style="width:48px;height:40px;border:2px solid var(--accent);border-radius:2px;position:relative"><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;background:var(--accent)"></div></div>
+<div style="width:12px;height:1px;background:rgba(242,235,224,0.3)"></div>
+<div style="font-family:'Space Mono',monospace;font-size:8px;color:rgba(242,235,224,0.4)">3·2·1</div>
+<div style="width:12px;height:1px;background:rgba(242,235,224,0.3)"></div>
+<div style="width:48px;height:40px;border:2px solid rgba(242,235,224,0.5);border-radius:2px;position:relative"><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;background:rgba(242,235,224,0.5)"></div></div>
+</div>
+<h2 style="font-family:'Fraunces',serif;font-size:36px;font-weight:400;line-height:1;letter-spacing:-0.03em;margin-bottom:12px;font-variation-settings:'opsz' 144">
+Together
+</h2>
+<p style="font-size:14px;line-height:1.5;color:rgba(242,235,224,0.65);max-width:300px;margin-bottom:24px">
+Both cameras. Both faces. One shared countdown, one captured moment. They open a link — you see each other.
+</p>
+<div style="display:flex;justify-content:space-between;align-items:center;padding-top:16px;border-top:1px solid rgba(242,235,224,0.15)">
+<span style="font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.12em">Start a room</span>
+<span style="font-family:'Space Mono',monospace;font-size:20px;color:var(--accent)">→</span>
+</div>
+</div>
+
+<!-- Solo (secondary) -->
+<div onclick="app.startSolo()" style="background:var(--bg);color:var(--fg);border:1px solid var(--fg);padding:28px;box-shadow:var(--shadow-soft);cursor:pointer;transition:transform 0.3s cubic-bezier(.2,.7,.2,1)" onmouseover="this.style.transform='translate(-2px,-4px)';this.style.boxShadow='6px 8px 0 var(--fg)'" onmouseout="this.style.transform='';this.style.boxShadow='var(--shadow-soft)'">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+<span style="font-family:'Fraunces',serif;font-size:14px;font-weight:400;border-bottom:1px solid var(--fg);padding-bottom:2px">02</span>
+<span style="font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:0.12em;opacity:0.5">SOLO · JUST YOU</span>
+</div>
+<!-- Mini diagram -->
+<div style="height:64px;display:flex;align-items:center;justify-content:center;margin-bottom:20px">
+<div style="width:56px;height:44px;border:2px solid var(--fg);border-radius:2px;position:relative"><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:var(--fg)"></div></div>
+</div>
+<h2 style="font-family:'Fraunces',serif;font-size:32px;font-weight:400;line-height:1;letter-spacing:-0.03em;margin-bottom:12px;font-variation-settings:'opsz' 144">
+Just Me
+</h2>
+<p style="font-size:14px;line-height:1.5;color:rgba(24,20,16,0.55);max-width:300px;margin-bottom:24px">
+Classic photobooth. Your camera, your filters, your frames. Take a photo, save it, share it.
+</p>
+<div style="display:flex;justify-content:space-between;align-items:center;padding-top:16px;border-top:1px solid var(--fg)">
+<span style="font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.12em">Open camera</span>
+<span style="font-family:'Space Mono',monospace;font-size:20px;color:var(--accent)">→</span>
+</div>
+</div>
+</div>
+
+<!-- Gallery Preview Strip -->
+<div style="background:var(--accent-soft);border-top:1px solid var(--fg);padding:48px 24px">
+<div style="max-width:680px;margin:0 auto;width:100%">
+<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:32px;flex-wrap:wrap;gap:16px">
+<h3 style="font-family:'Fraunces',serif;font-size:clamp(28px,6vw,44px);font-weight:400;line-height:1;letter-spacing:-0.03em">
+<em style="font-style:italic;font-weight:300;color:var(--accent)">moments</em> together
+</h3>
+<button class="btn" style="font-size:10px;padding:10px 14px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:0.1em" onclick="app.openGallery()">View all →</button>
+</div>
+<div id="gallery-preview" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px">
+<p style="grid-column:1/-1;font-size:14px;color:rgba(24,20,16,0.4);text-align:center;padding:32px">Photos you take together will appear here.</p>
+</div>
+</div>
+</div>
+
+<!-- Footer -->
+<div style="padding:24px;border-top:1px solid var(--fg);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+<span style="font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:0.12em;color:rgba(24,20,16,0.35)">us. · 2026</span>
+<span style="font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:0.12em;color:rgba(24,20,16,0.35)">photos never leave your device except to save</span>
+</div>
+
 </div>
 
 <!-- ===== ROOM (Together mode) ===== -->
 <div id="room" class="screen">
+<button class="btn" style="position:absolute;top:24px;left:24px;font-size:14px;padding:8px 16px" onclick="app.goHome()">← Back</button>
 <h2 class="room-title" id="room-title">Create a Room</h2>
 <div id="room-create">
 <p style="margin-bottom:24px;opacity:0.6;text-align:center">Share the code with your person.</p>
@@ -37,7 +127,6 @@
 <input class="room-input" id="room-code-input" maxlength="5" placeholder="XXXXX" oninput="this.value=this.value.toUpperCase()">
 <button class="btn btn-primary" style="margin-top:24px" onclick="app.joinRoom()">Join</button>
 </div>
-<button class="btn" style="position:absolute;top:24px;left:24px;font-size:14px;padding:8px 16px" onclick="app.goHome()">← Back</button>
 </div>
 
 <!-- ===== STAGE (Camera) ===== -->
@@ -46,7 +135,6 @@
 <div class="status-pill"><span class="status-dot" id="status-dot"></span><span id="status-text">READY</span></div>
 <button class="exit-btn" onclick="app.goHome()">✕</button>
 </div>
-
 <div class="video-container" id="video-container">
 <div class="video-half local">
 <video id="local-video" autoplay playsinline muted></video>
@@ -60,12 +148,10 @@
 <span class="video-label">THEM</span>
 </div>
 </div>
-
 <div class="controls-row">
 <div class="filter-row" id="filter-row"></div>
 <div class="frame-row" id="frame-row"></div>
 </div>
-
 <div class="controls-bar">
 <button class="btn" style="font-size:14px" onclick="app.openGallery()">Gallery</button>
 <button class="shutter-btn" id="shutter-btn" onclick="app.capture()"></button>
@@ -97,12 +183,12 @@
 
 <!-- ===== GALLERY ===== -->
 <div id="gallery-screen" class="screen">
+<button class="btn" style="position:absolute;top:24px;left:24px;font-size:14px;padding:8px 16px" onclick="app.goHome()">← Home</button>
 <h2 class="gallery-header">Your Moments</h2>
 <div class="gallery-grid" id="gallery-grid"></div>
-<button class="btn" style="margin-top:24px" onclick="app.goHome()">← Home</button>
 </div>
 
-<!-- ===== HIDDEN CANVAS for compositing ===== -->
+<!-- ===== HIDDEN CANVAS ===== -->
 <canvas id="composite-canvas" style="display:none"></canvas>
 
 <!-- ===== SCRIPTS ===== -->

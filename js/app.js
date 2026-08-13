@@ -31,6 +31,7 @@ const app = {
     this.loadGallery();
     this.buildFilterChips();
     this.buildFrameChips();
+    this.loadGalleryPreview();
     
     // Check URL for room code
     const params = new URLSearchParams(window.location.search);
@@ -39,6 +40,37 @@ const app = {
       this.roomCode = code.toUpperCase();
       this.startTogether(true);
     }
+  },
+  
+  async loadGalleryPreview() {
+    const preview = document.getElementById('gallery-preview');
+    if (!preview) return;
+    
+    let photos = [];
+    
+    // Local photos
+    if (this.gallery.length > 0) {
+      photos = [...this.gallery.slice(0, 4)];
+    }
+    
+    // Cloud photos
+    if (typeof storage !== 'undefined') {
+      const cloud = await storage.listPhotos();
+      cloud.slice(0, 4).forEach(cp => {
+        if (photos.length < 4) photos.push(cp);
+      });
+    }
+    
+    if (photos.length === 0) return;
+    
+    preview.innerHTML = '';
+    photos.forEach(item => {
+      const img = document.createElement('img');
+      img.src = item.url;
+      img.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;border:1px solid var(--fg);box-shadow:2px 2px 0 var(--fg);cursor:pointer';
+      img.onclick = () => app.openGallery();
+      preview.appendChild(img);
+    });
   },
   
   // ===== SCREEN MANAGEMENT =====

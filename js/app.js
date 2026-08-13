@@ -93,6 +93,10 @@ const app = {
   },
 
   goHome() {
+    this.stopFramePreview();
+    const sheet = document.getElementById('frame-sheet');
+    if (sheet) sheet.style.display = 'none';
+    this.frameSheetOpen = false;
     this.stopCamera();
     this.cleanupPeer();
     this.multiShotCancelled = true; // halt any in-progress multi-shot
@@ -124,6 +128,7 @@ const app = {
     this.hideRemote();
     this.startCamera().then(() => {
       this.showScreen('stage');
+      setTimeout(() => this.initFrameOverlay(), 100);
     }).catch(() => {
       // Camera failed, error already shown
     });
@@ -270,8 +275,177 @@ const app = {
 
   setFrame(key) {
     this.currentFrame = key;
-    document.querySelectorAll('.frame-chip').forEach(c => {
-      c.classList.toggle('active', c.dataset.frame === key);
+    this.updateFrameOverlay();
+    // Update visual thumbnails active state
+    document.querySelectorAll('.frame-thumb').forEach(t => {
+      t.classList.toggle('active', t.dataset.frame === key);
+    });
+  },
+  
+  // ===== FRAME PREVIEW OVERLAY =====
+  frameOverlayCanvas: null,
+  frameOverlayCtx: null,
+  framePreviewLoop: null,
+  
+  initFrameOverlay() {
+    this.frameOverlayCanvas = document.getElementById('frame-overlay');
+    if (!this.frameOverlayCanvas) return;
+    this.frameOverlayCtx = this.frameOverlayCanvas.getContext('2d');
+    this.startFramePreview();
+  },
+  
+  startFramePreview() {
+    if (this.framePreviewLoop) cancelAnimationFrame(this.framePreviewLoop);
+    
+    const tick = () => {
+      this.drawFrameOverlay();
+      this.framePreviewLoop = requestAnimationFrame(tick);
+    };
+    tick();
+  },
+  
+  stopFramePreview() {
+    if (this.framePreviewLoop) {
+      cancelAnimationFrame(this.framePreviewLoop);
+      this.framePreviewLoop = null;
+    }
+    if (this.frameOverlayCtx) {
+      this.frameOverlayCtx.clearRect(0, 0, this.frameOverlayCanvas.width, this.frameOverlayCanvas.height);
+    }
+  },
+  
+  drawFrameOverlay() {
+    if (!this.frameOverlayCanvas || !this.frameOverlayCtx) return;
+    const container = document.getElementById('video-container');
+    if (!container) return;
+    
+    const rect = container.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    
+    // Resize canvas to match container
+    if (this.frameOverlayCanvas.width !== rect.width * dpr || this.frameOverlayCanvas.height !== rect.height * dpr) {
+      this.frameOverlayCanvas.width = rect.width * dpr;
+      this.frameOverlayCanvas.height = rect.height * dpr;
+      this.frameOverlayCanvas.style.width = rect.width + 'px';
+      this.frameOverlayCanvas.style.height = rect.height + 'px';
+    }
+    
+    const ctx = this.frameOverlayCtx;
+    const w = this.frameOverlayCanvas.width;
+    const h = this.frameOverlayCanvas.height;
+    
+    ctx.clearRect(0, 0, w, h);
+    
+    // Draw current frame at semi-transparent during browse, full when locked
+    const frameDef = FRAMES[this.currentFrame];
+    if (frameDef && this.currentFrame !== 'none') {
+      ctx.save();
+      if (this.frameSheetOpen) {
+        ctx.globalAlpha = 0.5; // ghost mode while browsing
+      }
+      frameDef.draw(ctx, w, h);
+      ctx.restore();
+    }
+  },
+  
+  updateFrameOverlay() {
+    this.drawFrameOverlay();
+  },
+  
+  // ===== FRAME PICKER BOTTOM SHEET =====
+  frameSheetOpen: false,
+  frameCategory: 'all',
+  
+  toggleFrameSheet() {
+    const sheet = document.getElementById('frame-sheet');
+    if (!sheet) return;
+    
+    if (this.frameSheetOpen) {
+      // Close
+      sheet.style.transform = 'translateY(100%)';
+      this.frameSheetOpen = false;
+      setTimeout(() => { sheet.style.display = 'none'; }, 300);
+    } else {
+      // Open
+      sheet.style.display = 'flex';
+      this.frameSheetOpen = true;
+      requestAnimationFrame(() => {
+        sheet.style.transform = 'translateY(0)';
+      });
+      this.buildFrameThumbnails();
+    }
+    this.drawFrameOverlay();
+  },
+  
+  buildFrameThumbnails() {
+    const container = document.getElementById('frame-thumbnails');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    for (const [key, frame] of Object.entries(FRAMES)) {
+      // Category filter
+      if (this.frameCategory !== 'all' && frame.category && frame.category !== this.frameCategory) continue;
+      
+      const thumb = document.createElement('div');
+      thumb.className = 'frame-thumb' + (key === this.currentFrame ? ' active' : '');
+      thumb.dataset.frame = key;
+      thumb.style.cssText = 'flex-shrink:0;width:54px;height:72px;cursor:pointer;position:relative;border:2px solid var(--fg);box-shadow:2px 2px 0 var(--fg);transition:all 0.2s ease';
+      
+      // Mini canvas showing frame on placeholder
+      const mini = document.createElement('canvas');
+      mini.width = 108;
+      mini.height = 144;
+      mini.style.cssText = 'width:100%;height:100%;display:block';
+      const mctx = mini.getContext('2d');
+      
+      // Draw placeholder background (warm gradient simulating a photo)
+      const grad = mctx.createLinearGradient(0, 0, 108, 144);
+      grad.addColorStop(0, '#E8C4A0');
+      grad.addColorStop(0.5, '#D4A080');
+      grad.addColorStop(1, '#A07050');
+      mctx.fillStyle = grad;
+      mctx.fillRect(0, 0, 108, 144);
+      
+      // Simple face silhouette
+      mctx.fillStyle = 'rgba(255,220,180,0.7)';
+      mctx.beginPath();
+      mctx.arc(54, 55, 22, 0, Math.PI * 2);
+      mctx.fill();
+      mctx.fillRect(34, 75, 40, 50);
+      
+      // Draw frame on top
+      if (frame.draw) frame.draw(mctx, 108, 144);
+      
+      thumb.appendChild(mini);
+      
+      // Name label
+      const label = document.createElement('div');
+      label.textContent = frame.name;
+      label.style.cssText = 'position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-family:Space Mono,monospace;font-size:7px;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg);opacity:0.6;white-space:nowrap;overflow:hidden';
+      thumb.appendChild(label);
+      
+      thumb.onclick = () => {
+        this.setFrame(key);
+      };
+      
+      // Add margin for label
+      thumb.style.marginBottom = '20px';
+      
+      container.appendChild(thumb);
+    }
+    
+    // Category tab handlers
+    document.querySelectorAll('.frame-cat-btn').forEach(btn => {
+      btn.onclick = () => {
+        this.frameCategory = btn.dataset.cat;
+        document.querySelectorAll('.frame-cat-btn').forEach(b => {
+          b.style.background = 'var(--bg)';
+          b.style.color = 'var(--fg)';
+        });
+        btn.style.background = 'var(--fg)';
+        btn.style.color = 'var(--bg)';
+        this.buildFrameThumbnails();
+      };
     });
   },
 
@@ -646,6 +820,7 @@ const app = {
 
   retake() {
     this.showScreen('stage');
+      setTimeout(() => this.initFrameOverlay(), 100);
   },
 
   // ===== DOWNLOAD =====
@@ -800,6 +975,7 @@ const app = {
 
     this.startCamera().then(() => {
       this.showScreen('stage');
+      setTimeout(() => this.initFrameOverlay(), 100);
       this.initPeerJS();
     }).catch(() => {});
   },

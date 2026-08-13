@@ -138,11 +138,11 @@ function drawHunnyPot(ctx, cx, cy, size, color) {
 
 // ===== ALL FRAMES =====
 const FRAMES = {
-  none: { name: 'None', draw: () => {} },
+  none: { name: 'None', category: 'clean', draw: () => {} },
 
   // ===== CLEAN / MINIMAL =====
   polaroid: {
-    name: 'Polaroid',
+    name: 'Polaroid', category: 'clean',
     draw: (ctx, w, h) => {
       const bt = Math.round(h * 0.08);
       const st = Math.round(w * 0.04);
@@ -159,7 +159,7 @@ const FRAMES = {
     },
   },
   hairline: {
-    name: 'Indie',
+    name: 'Indie', category: 'clean',
     draw: (ctx, w, h) => {
       ctx.strokeStyle = '#181410';
       ctx.lineWidth = 3;
@@ -172,14 +172,14 @@ const FRAMES = {
     },
   },
   cleanWhite: {
-    name: 'Clean',
+    name: 'Clean', category: 'clean',
     draw: (ctx, w, h) => {
       const bw = Math.round(w * 0.025);
       frameBorder(ctx, w, h, bw, '#FFFFFF');
     },
   },
   shadowBox: {
-    name: 'Shadow',
+    name: 'Shadow', category: 'clean',
     draw: (ctx, w, h) => {
       ctx.shadowColor = 'rgba(24,20,16,0.4)';
       ctx.shadowBlur = 20;
@@ -193,7 +193,7 @@ const FRAMES = {
     },
   },
   kodak: {
-    name: 'Kodak',
+    name: 'Kodak', category: 'clean',
     draw: (ctx, w, h) => {
       const bw = Math.round(w * 0.03);
       frameBorder(ctx, w, h, bw, '#D64045');
@@ -203,7 +203,7 @@ const FRAMES = {
     },
   },
   rounded: {
-    name: 'Soft',
+    name: 'Soft', category: 'clean',
     draw: (ctx, w, h) => {
       const r = Math.round(w * 0.03), bw = 4;
       ctx.strokeStyle = '#181410';
@@ -222,7 +222,7 @@ const FRAMES = {
     },
   },
   filmstrip: {
-    name: 'Film',
+    name: 'Film', category: 'clean',
     draw: (ctx, w, h) => {
       const holeSize = Math.round(w * 0.04);
       const holeSpacing = holeSize * 1.8;
@@ -240,7 +240,7 @@ const FRAMES = {
 
   // ===== CUSTOM / FUN =====
   stamp: {
-    name: 'Stamp',
+    name: 'Stamp', category: 'fun',
     draw: (ctx, w, h) => {
       // Perforated edges like a postage stamp
       const perf = Math.round(w * 0.015);
@@ -262,7 +262,7 @@ const FRAMES = {
     },
   },
   hearts: {
-    name: 'Hearts',
+    name: 'Hearts', category: 'fun',
     draw: (ctx, w, h) => {
       const size = Math.round(w * 0.025);
       const positions = [
@@ -274,7 +274,7 @@ const FRAMES = {
     },
   },
   confetti: {
-    name: 'Confetti',
+    name: 'Confetti', category: 'fun',
     draw: (ctx, w, h) => {
       const colors = ['#D64045', '#F2C998', '#3A6B5C', '#FFD700', '#181410'];
       const size = Math.round(w * 0.008);
@@ -291,7 +291,7 @@ const FRAMES = {
     },
   },
   dateStamp: {
-    name: 'Date',
+    name: 'Date', category: 'fun',
     draw: (ctx, w, h) => {
       const bt = Math.round(h * 0.12);
       ctx.fillStyle = '#181410';
@@ -308,7 +308,7 @@ const FRAMES = {
     },
   },
   doubleLine: {
-    name: 'Double',
+    name: 'Double', category: 'fun',
     draw: (ctx, w, h) => {
       const gap = 6;
       ctx.strokeStyle = '#181410';
@@ -322,7 +322,7 @@ const FRAMES = {
 
   // ===== WINNIE THE POOH =====
   honey: {
-    name: 'Hunny',
+    name: 'Hunny', category: 'themed',
     draw: (ctx, w, h) => {
       const bw = Math.round(w * 0.05);
       // Warm golden border
@@ -342,7 +342,7 @@ const FRAMES = {
     },
   },
   hundredAcre: {
-    name: 'Forest',
+    name: 'Forest', category: 'themed',
     draw: (ctx, w, h) => {
       const bw = Math.round(w * 0.035);
       frameBorder(ctx, w, h, bw, '#3A6B5C');
@@ -363,7 +363,7 @@ const FRAMES = {
     },
   },
   balloon: {
-    name: 'Balloon',
+    name: 'Balloon', category: 'themed',
     draw: (ctx, w, h) => {
       // Floating balloons in corners
       const bSize = Math.round(w * 0.035);
@@ -397,7 +397,7 @@ const FRAMES = {
 
   // ===== PUCCA & GARU =====
   pucca: {
-    name: 'Pucca',
+    name: 'Pucca', category: 'themed',
     draw: (ctx, w, h) => {
       const bw = Math.round(w * 0.04);
       // Red border (Pucca's outfit)
@@ -417,7 +417,7 @@ const FRAMES = {
     },
   },
   ninja: {
-    name: 'Ninja',
+    name: 'Ninja', category: 'themed',
     draw: (ctx, w, h) => {
       // Black border (Garu's ninja style)
       const bw = Math.round(w * 0.045);
@@ -435,7 +435,7 @@ const FRAMES = {
     },
   },
   noodle: {
-    name: 'Noodle',
+    name: 'Noodle', category: 'themed',
     draw: (ctx, w, h) => {
       // Pink/white border (Gohyang Noodle House theme)
       const bw = Math.round(w * 0.035);
@@ -454,7 +454,7 @@ const FRAMES = {
 
   // ===== HELLO KITTY =====
   kitty: {
-    name: 'Kitty',
+    name: 'Kitty', category: 'themed',
     draw: (ctx, w, h) => {
       const bw = Math.round(w * 0.04);
       // White border
@@ -475,7 +475,7 @@ const FRAMES = {
     },
   },
   kittyPink: {
-    name: 'Pink',
+    name: 'Pink', category: 'themed',
     draw: (ctx, w, h) => {
       const bw = Math.round(w * 0.04);
       // Pink border
@@ -491,7 +491,7 @@ const FRAMES = {
     },
   },
   sparkle: {
-    name: 'Sparkle',
+    name: 'Sparkle', category: 'themed',
     draw: (ctx, w, h) => {
       // Star/sparkle border (cute kawaii style)
       const sSize = Math.round(w * 0.016);

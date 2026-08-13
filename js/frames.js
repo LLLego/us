@@ -144,18 +144,52 @@ const FRAMES = {
   polaroid: {
     name: 'Polaroid', category: 'clean',
     draw: (ctx, w, h) => {
-      const bt = Math.round(h * 0.08);
-      const st = Math.round(w * 0.04);
-      ctx.fillStyle = '#FDFBF7';
-      ctx.fillRect(0, 0, w, st);
-      ctx.fillRect(0, h - bt, w, bt);
-      ctx.fillRect(0, 0, st, h);
-      ctx.fillRect(w - st, 0, st, h);
-      ctx.fillStyle = '#181410';
-      ctx.font = `400 ${Math.round(bt * 0.3)}px 'Space Mono', monospace`;
-      ctx.textAlign = 'center';
-      const d = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
-      ctx.fillText(d, w / 2, h - bt / 2.5);
+      // Paper gradient — warm white top, settles to off-white bottom
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#FEFEF9');
+      grad.addColorStop(0.6, '#FDFCF5');
+      grad.addColorStop(1, '#F8F6EE');
+      
+      // Borders — thin top/sides, thick bottom (classic instant film)
+      const st = Math.round(w * 0.04);   // sides/top
+      const bt = Math.round(h * 0.12);   // bottom
+      
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, st);           // top
+      ctx.fillRect(0, 0, st, h);           // left
+      ctx.fillRect(w - st, 0, st, h);      // right
+      ctx.fillRect(0, h - bt, w, bt);      // bottom
+      
+      // Inner shadow — photo sits under paper lip
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(st, st, w - st * 2, h - st - bt);
+      ctx.clip();
+      ctx.shadowColor = 'rgba(20,15,10,0.18)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetY = 3;
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(st, st, w - st * 2, h - st - bt);
+      ctx.restore();
+      
+      // Date stamp — handwritten, left-aligned with margin
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-US', { 
+        month: 'long', day: 'numeric' 
+      });
+      const yearStr = now.getFullYear().toString();
+      
+      ctx.fillStyle = '#3A3530';
+      ctx.font = `700 ${Math.round(bt * 0.22)}px 'Caveat', cursive`;
+      ctx.textAlign = 'left';
+      ctx.fillText(dateStr, st * 1.8, h - bt * 0.55);
+      
+      // Year in mono, right side
+      ctx.fillStyle = 'rgba(58,53,48,0.4)';
+      ctx.font = `400 ${Math.round(bt * 0.12)}px 'Space Mono', monospace`;
+      ctx.textAlign = 'right';
+      ctx.fillText(yearStr, w - st * 1.8, h - bt * 0.35);
     },
   },
   hairline: {

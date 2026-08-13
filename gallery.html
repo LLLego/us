@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>us — Frame Gallery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,700;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500&family=Space+Mono:wght@400&family=Caveat:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+:root { --bg: #F2EBE0; --fg: #181410; --accent: #D64045; --accent-soft: #E8E3D6; --paper: #FDFBF7; --shadow: 4px 4px 0 var(--fg); }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: 'Inter', sans-serif; padding: 24px; }
+h1 { font-family: 'Fraunces', serif; font-weight: 300; font-size: 48px; letter-spacing: -0.03em; margin-bottom: 8px; }
+h1 em { font-style: italic; color: var(--accent); }
+.subtitle { font-family: 'Space Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; opacity: 0.5; margin-bottom: 40px; }
+.section { margin-bottom: 48px; }
+.section-title { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 400; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 1px solid var(--fg); }
+.section-title em { font-style: italic; color: var(--accent); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 24px; }
+.frame-card { background: var(--paper); border: 1.5px solid var(--fg); box-shadow: var(--shadow); overflow: hidden; }
+.frame-card .preview { width: 100%; aspect-ratio: 4/5; position: relative; background: linear-gradient(135deg, #E8C4A0, #D4A080, #A07050); overflow: hidden; }
+.frame-card .info { padding: 12px 16px; border-top: 1px solid var(--fg); display: flex; justify-content: space-between; align-items: center; }
+.frame-card .name { font-family: 'Fraunces', serif; font-size: 18px; }
+.frame-card .cat { font-family: 'Space Mono', monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.5; }
+.back-link { font-family: 'Space Mono', monospace; font-size: 11px; text-transform: uppercase; color: var(--fg); text-decoration: none; border: 1px solid var(--fg); padding: 8px 14px; box-shadow: 2px 2px 0 var(--fg); margin-bottom: 24px; display: inline-block; }
+.loading { text-align: center; padding: 60px; font-style: italic; opacity: 0.4; font-family: 'Fraunces',serif; font-size: 18px; }
+</style>
+</head>
+<body>
+<a href="index.html" class="back-link">← Back to app</a>
+<h1>frame <em>gallery</em></h1>
+<p class="subtitle">HTML/CSS rendered frames · live preview</p>
+<div id="html-frames" class="section"><div class="loading">Rendering HTML frames...</div></div>
+<div id="canvas-frames" class="section" style="display:none"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="js/filters.js"></script>
+<script src="js/stickers.js"></script>
+<script src="js/html-frames.js"></script>
+<script src="js/frames.js"></script>
+<script>
+window.addEventListener('load', async () => {
+  if (typeof preloadStickers !== 'undefined') await preloadStickers();
+  if (typeof frameRenderer !== 'undefined') frameRenderer.init();
+  
+  // Render HTML frames
+  const container = document.getElementById('html-frames');
+  container.innerHTML = '<div class="section-title"><em>designed</em> frames</div><div class="grid" id="html-grid"></div>';
+  const grid = document.getElementById('html-grid');
+  
+  if (typeof HTML_FRAMES !== 'undefined') {
+    for (const [key, frame] of Object.entries(HTML_FRAMES)) {
+      const card = document.createElement('div');
+      card.className = 'frame-card';
+      
+      const previewDiv = document.createElement('div');
+      previewDiv.className = 'preview';
+      
+      // Render frame HTML directly into preview
+      const renderDiv = document.createElement('div');
+      renderDiv.innerHTML = frame.render(220, 275);
+      renderDiv.style.cssText = 'position:absolute;inset:0';
+      previewDiv.appendChild(renderDiv);
+      
+      const info = document.createElement('div');
+      info.className = 'info';
+      info.innerHTML = `<span class="name">${frame.name}</span><span class="cat">${frame.category}</span>`;
+      
+      card.appendChild(previewDiv);
+      card.appendChild(info);
+      grid.appendChild(card);
+    }
+  }
+  
+  // Render old canvas frames for comparison
+  const oldContainer = document.getElementById('canvas-frames');
+  if (typeof FRAMES !== 'undefined') {
+    oldContainer.style.display = 'block';
+    oldContainer.innerHTML = '<div class="section-title"><em>canvas</em> frames (old)</div><div class="grid" id="canvas-grid"></div>';
+    const cgrid = document.getElementById('canvas-grid');
+    
+    for (const [key, frame] of Object.entries(FRAMES)) {
+      const card = document.createElement('div');
+      card.className = 'frame-card';
+      
+      const previewDiv = document.createElement('div');
+      previewDiv.className = 'preview';
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = 220; canvas.height = 275;
+      canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+      const ctx = canvas.getContext('2d');
+      
+      // Placeholder
+      const grad = ctx.createLinearGradient(0, 0, 220, 275);
+      grad.addColorStop(0, '#E8C4A0'); grad.addColorStop(0.5, '#D4A080'); grad.addColorStop(1, '#A07050');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 220, 275);
+      ctx.fillStyle = 'rgba(255,220,180,0.6)';
+      ctx.beginPath(); ctx.arc(110, 110, 40, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(80, 145, 60, 90);
+      
+      ctx.filter = 'none';
+      if (frame.draw) try { frame.draw(ctx, 220, 275); } catch(e) {}
+      
+      previewDiv.appendChild(canvas);
+      
+      const info = document.createElement('div');
+      info.className = 'info';
+      info.innerHTML = `<span class="name">${frame.name}</span><span class="cat">${frame.category || 'clean'}</span>`;
+      
+      card.appendChild(previewDiv);
+      card.appendChild(info);
+      cgrid.appendChild(card);
+    }
+  }
+});
+</script>
+</body>
+</html>

@@ -320,78 +320,90 @@ const FRAMES = {
     },
   },
 
-  // ===== WINNIE THE POOH =====
+  // ===== WINNIE THE POOH (using SVG stickers) =====
   honey: {
     name: 'Hunny', category: 'themed',
     draw: (ctx, w, h) => {
       const bw = Math.round(w * 0.05);
-      // Warm golden border
-      frameBorder(ctx, w, h, bw, '#D4A017');
-      // "hunny" text in handwritten at bottom
+      // Warm golden gradient border
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#E8B838');
+      grad.addColorStop(0.5, '#D4A017');
+      grad.addColorStop(1, '#C0881A');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, bw);
+      ctx.fillRect(0, h - bw, w, bw);
+      ctx.fillRect(0, 0, bw, h);
+      ctx.fillRect(w - bw, 0, bw, h);
+      // Inner line
+      ctx.strokeStyle = '#8B5A00';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bw + 2, bw + 2, w - 2*bw - 4, h - 2*bw - 4);
+      // Hunny text
       ctx.fillStyle = '#8B5A00';
-      ctx.font = `700 ${Math.round(bw * 0.6)}px 'Caveat', cursive`;
+      ctx.font = `italic 700 ${Math.round(bw * 0.5)}px 'Caveat', cursive`;
       ctx.textAlign = 'center';
-      ctx.fillText('hunny', w / 2, h - bw / 2.5);
-      // Honey drip accents on top corners
-      drawHoneyDrop(ctx, bw * 1.5, bw / 2, bw / 4, '#D4A017');
-      drawHoneyDrop(ctx, w - bw * 1.5, bw / 2, bw / 4, '#D4A017');
-      // Tiny bees
-      const beeSize = Math.round(w * 0.012);
-      drawBee(ctx, w * 0.15, bw + beeSize * 2, beeSize);
-      drawBee(ctx, w * 0.85, bw + beeSize * 2, beeSize);
+      ctx.fillText('hunny', w / 2, h - bw * 0.35);
+      // Stickers
+      const beeSize = Math.round(w * 0.04);
+      drawStickerSync(ctx, 'bee', bw * 2, bw * 0.7, beeSize);
+      drawStickerSync(ctx, 'bee', w - bw * 2, bw * 0.7, beeSize);
+      drawStickerSync(ctx, 'honey_pot', bw * 2, h - bw * 2.5, beeSize * 1.5);
+      drawStickerSync(ctx, 'honey_pot', w - bw * 2, h - bw * 2.5, beeSize * 1.5);
     },
   },
   hundredAcre: {
     name: 'Forest', category: 'themed',
     draw: (ctx, w, h) => {
-      const bw = Math.round(w * 0.035);
-      frameBorder(ctx, w, h, bw, '#3A6B5C');
-      // Leaves scattered on the border
-      const leafSize = Math.round(w * 0.02);
-      drawLeaf(ctx, bw / 2, h * 0.15, leafSize, 0.5, '#5A8B7C');
-      drawLeaf(ctx, bw / 2, h * 0.4, leafSize, -0.3, '#3A6B5C');
-      drawLeaf(ctx, bw / 2, h * 0.7, leafSize, 0.8, '#5A8B7C');
-      drawLeaf(ctx, w - bw / 2, h * 0.25, leafSize, -0.5, '#3A6B5C');
-      drawLeaf(ctx, w - bw / 2, h * 0.55, leafSize, 0.3, '#5A8B7C');
-      drawLeaf(ctx, w - bw / 2, h * 0.85, leafSize, -0.7, '#3A6B5C');
-      drawLeaf(ctx, w * 0.2, bw / 2, leafSize, 1.2, '#5A8B7C');
-      drawLeaf(ctx, w * 0.6, bw / 2, leafSize, -1.0, '#3A6B5C');
-      drawLeaf(ctx, w * 0.3, h - bw / 2, leafSize, 1.5, '#5A8B7C');
-      drawLeaf(ctx, w * 0.7, h - bw / 2, leafSize, -1.3, '#3A6B5C');
-      // Small red balloon accent (Pooh's balloon)
-      drawCircle(ctx, w * 0.5, bw + leafSize, leafSize * 0.8, '#D64045');
+      const bw = Math.round(w * 0.04);
+      // Green gradient border
+      const grad = ctx.createLinearGradient(0, 0, w, h);
+      grad.addColorStop(0, '#5A8B7C');
+      grad.addColorStop(1, '#2A4B3C');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, bw);
+      ctx.fillRect(0, h - bw, w, bw);
+      ctx.fillRect(0, 0, bw, h);
+      ctx.fillRect(w - bw, 0, bw, h);
+      // Leaves scattered
+      const ls = Math.round(w * 0.03);
+      const positions = [
+        [bw*0.6, h*0.12], [bw*0.6, h*0.35], [bw*0.6, h*0.62], [bw*0.6, h*0.88],
+        [w-bw*0.6, h*0.08], [w-bw*0.6, h*0.3], [w-bw*0.6, h*0.55], [w-bw*0.6, h*0.82],
+        [w*0.15, bw*0.6], [w*0.45, bw*0.6], [w*0.7, bw*0.6],
+        [w*0.2, h-bw*0.6], [w*0.55, h-bw*0.6], [w*0.8, h-bw*0.6],
+      ];
+      positions.forEach(([x, y], i) => {
+        drawStickerSync(ctx, 'leaf', x, y, ls);
+      });
+      // Red balloon accent
+      drawStickerSync(ctx, 'balloon', w * 0.5, bw + ls * 1.5, ls * 1.2);
     },
   },
-  balloon: {
-    name: 'Balloon', category: 'themed',
+  balloonFloat: {
+    name: 'Balloons', category: 'themed',
     draw: (ctx, w, h) => {
-      // Floating balloons in corners
-      const bSize = Math.round(w * 0.035);
-      // Top-left red balloon
-      drawCircle(ctx, bSize * 1.5, bSize * 1.5, bSize, '#D64045');
-      ctx.strokeStyle = '#181410';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(bSize * 1.5, bSize * 2.5);
-      ctx.lineTo(bSize * 0.8, bSize * 5);
-      ctx.stroke();
-      // Top-right green balloon
-      drawCircle(ctx, w - bSize * 1.5, bSize * 1.5, bSize, '#3A6B5C');
-      ctx.beginPath();
-      ctx.moveTo(w - bSize * 1.5, bSize * 2.5);
-      ctx.lineTo(w - bSize * 0.8, bSize * 5);
-      ctx.stroke();
-      // Bottom gold balloon
-      drawCircle(ctx, bSize * 1.5, h - bSize * 1.5, bSize, '#FFD700');
-      ctx.beginPath();
-      ctx.moveTo(bSize * 1.5, h - bSize * 2.5);
-      ctx.lineTo(bSize * 0.8, h - bSize * 5);
-      ctx.stroke();
-      drawCircle(ctx, w - bSize * 1.5, h - bSize * 1.5, bSize, '#D4A017');
-      ctx.beginPath();
-      ctx.moveTo(w - bSize * 1.5, h - bSize * 2.5);
-      ctx.lineTo(w - bSize * 0.8, h - bSize * 5);
-      ctx.stroke();
+      const bs = Math.round(w * 0.05);
+      // Balloons in corners with strings
+      const balloons = [
+        {x: bs*1.2, y: bs*1.2, c: 'balloon'},
+        {x: w-bs*1.2, y: bs*1.2, c: 'balloon'},
+        {x: bs*1.2, y: h-bs*1.2, c: 'balloon'},
+        {x: w-bs*1.2, y: h-bs*1.2, c: 'balloon'},
+      ];
+      balloons.forEach(b => {
+        drawStickerSync(ctx, b.c, b.x, b.y, bs);
+        // String
+        ctx.strokeStyle = 'rgba(24,20,16,0.4)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y + bs/2);
+        ctx.lineTo(b.x + (Math.random()-0.5)*20, b.y + bs*1.5);
+        ctx.stroke();
+      });
+      // Extra floating balloons
+      drawStickerSync(ctx, 'balloon', w*0.3, bs*0.7, bs*0.7);
+      drawStickerSync(ctx, 'balloon', w*0.7, h-bs*0.7, bs*0.7);
     },
   },
 
@@ -399,56 +411,79 @@ const FRAMES = {
   pucca: {
     name: 'Pucca', category: 'themed',
     draw: (ctx, w, h) => {
-      const bw = Math.round(w * 0.04);
-      // Red border (Pucca's outfit)
-      frameBorder(ctx, w, h, bw, '#D64045');
-      // Hearts scattered (Pucca loves Garu!)
-      const hSize = Math.round(w * 0.02);
-      drawHeart(ctx, bw + hSize * 2, bw + hSize * 2, hSize, '#D64045');
-      drawHeart(ctx, w - bw - hSize * 2, bw + hSize * 2, hSize, '#D64045');
-      drawHeart(ctx, bw + hSize * 2, h - bw - hSize * 2, hSize, '#D64045');
-      drawHeart(ctx, w - bw - hSize * 2, h - bw - hSize * 2, hSize, '#D64045');
-      drawHeart(ctx, w / 2, bw + hSize, hSize * 0.8, '#D64045');
-      // "love" handwritten
+      const bw = Math.round(w * 0.045);
+      // Red gradient border
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#E85A5F');
+      grad.addColorStop(1, '#D64045');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, bw);
+      ctx.fillRect(0, h - bw, w, bw);
+      ctx.fillRect(0, 0, bw, h);
+      ctx.fillRect(w - bw, 0, bw, h);
+      // Pucca hearts in corners
+      const hs = Math.round(w * 0.035);
+      drawStickerSync(ctx, 'pucca_heart', bw + hs, bw + hs, hs);
+      drawStickerSync(ctx, 'pucca_heart', w - bw - hs, bw + hs, hs);
+      drawStickerSync(ctx, 'pucca_heart', bw + hs, h - bw - hs, hs);
+      drawStickerSync(ctx, 'pucca_heart', w - bw - hs, h - bw - hs, hs);
+      drawStickerSync(ctx, 'pucca_heart', w/2, bw + hs*0.8, hs*0.8);
+      drawStickerSync(ctx, 'pucca_heart', w/2, h - bw - hs*0.8, hs*0.8);
+      // Text
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = `700 ${Math.round(bw * 0.5)}px 'Caveat', cursive`;
+      ctx.font = `italic 700 ${Math.round(bw * 0.45)}px 'Caveat', cursive`;
       ctx.textAlign = 'center';
-      ctx.fillText('♥ love ♥', w / 2, h - bw / 2.5);
+      ctx.fillText('love ♥', w / 2, h - bw * 0.35);
     },
   },
   ninja: {
     name: 'Ninja', category: 'themed',
     draw: (ctx, w, h) => {
-      // Black border (Garu's ninja style)
-      const bw = Math.round(w * 0.045);
-      frameBorder(ctx, w, h, bw, '#181410');
-      // Ninja star accents
-      const sSize = Math.round(w * 0.018);
-      drawStar(ctx, bw * 1.5, bw * 1.5, sSize, '#D64045');
-      drawStar(ctx, w - bw * 1.5, h - bw * 1.5, sSize, '#D64045');
-      drawStar(ctx, w - bw * 1.5, bw * 1.5, sSize, '#F2EBE0');
-      drawStar(ctx, bw * 1.5, h - bw * 1.5, sSize, '#F2EBE0');
+      const bw = Math.round(w * 0.05);
+      // Black gradient border
+      const grad = ctx.createLinearGradient(0, 0, w, h);
+      grad.addColorStop(0, '#2A2520');
+      grad.addColorStop(1, '#181410');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, bw);
+      ctx.fillRect(0, h - bw, w, bw);
+      ctx.fillRect(0, 0, bw, h);
+      ctx.fillRect(w - bw, 0, bw, h);
+      // Ninja stars
+      const ss = Math.round(w * 0.025);
+      drawStickerSync(ctx, 'ninja_star', bw*1.5, bw*1.5, ss*1.5);
+      drawStickerSync(ctx, 'ninja_star', w-bw*1.5, h-bw*1.5, ss*1.5);
+      drawStickerSync(ctx, 'ninja_star', w-bw*1.5, bw*1.5, ss*1.5);
+      drawStickerSync(ctx, 'ninja_star', bw*1.5, h-bw*1.5, ss*1.5);
       // Red accent line
       ctx.strokeStyle = '#D64045';
       ctx.lineWidth = 2;
-      ctx.strokeRect(bw + 4, bw + 4, w - bw * 2 - 8, h - bw * 2 - 8);
+      ctx.strokeRect(bw + 3, bw + 3, w - bw*2 - 6, h - bw*2 - 6);
     },
   },
   noodle: {
     name: 'Noodle', category: 'themed',
     draw: (ctx, w, h) => {
-      // Pink/white border (Gohyang Noodle House theme)
-      const bw = Math.round(w * 0.035);
-      frameBorder(ctx, w, h, bw, '#FF69B4');
+      const bw = Math.round(w * 0.04);
+      // Pink gradient border
+      const grad = ctx.createLinearGradient(0, 0, w, h);
+      grad.addColorStop(0, '#FFB6C1');
+      grad.addColorStop(1, '#FF69B4');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, bw);
+      ctx.fillRect(0, h - bw, w, bw);
+      ctx.fillRect(0, 0, bw, h);
+      ctx.fillRect(w - bw, 0, bw, h);
+      // White inner border
       ctx.strokeStyle = '#FFFFFF';
       ctx.lineWidth = 2;
-      ctx.strokeRect(bw + 2, bw + 2, w - bw * 2 - 4, h - bw * 2 - 4);
-      // Little hearts in pink
-      const hSize = Math.round(w * 0.015);
-      drawHeart(ctx, w * 0.1, h * 0.1, hSize, '#FF69B4');
-      drawHeart(ctx, w * 0.9, h * 0.1, hSize, '#FF69B4');
-      drawHeart(ctx, w * 0.1, h * 0.9, hSize, '#FF69B4');
-      drawHeart(ctx, w * 0.9, h * 0.9, hSize, '#FF69B4');
+      ctx.strokeRect(bw + 2, bw + 2, w - bw*2 - 4, h - bw*2 - 4);
+      // Hearts
+      const hs = Math.round(w * 0.025);
+      drawStickerSync(ctx, 'heart_pink', w*0.1, h*0.1, hs);
+      drawStickerSync(ctx, 'heart_pink', w*0.9, h*0.1, hs);
+      drawStickerSync(ctx, 'heart_pink', w*0.1, h*0.9, hs);
+      drawStickerSync(ctx, 'heart_pink', w*0.9, h*0.9, hs);
     },
   },
 
@@ -456,62 +491,75 @@ const FRAMES = {
   kitty: {
     name: 'Kitty', category: 'themed',
     draw: (ctx, w, h) => {
-      const bw = Math.round(w * 0.04);
-      // White border
-      frameBorder(ctx, w, h, bw, '#FFFFFF');
-      // Red bow in top-left corner (Hello Kitty signature)
-      const bSize = Math.round(w * 0.035);
-      drawMouseBow(ctx, bw + bSize * 1.5, bw + bSize * 1.5, bSize, '#D64045');
-      // Top-right bow
-      drawMouseBow(ctx, w - bw - bSize * 1.5, bw + bSize * 1.5, bSize, '#D64045');
-      // Bottom-left bow
-      drawMouseBow(ctx, bw + bSize * 1.5, h - bw - bSize * 1.5, bSize, '#D64045');
-      // Bottom-right bow
-      drawMouseBow(ctx, w - bw - bSize * 1.5, h - bw - bSize * 1.5, bSize, '#D64045');
-      // Tiny hearts
-      const hSize = Math.round(w * 0.012);
-      drawHeart(ctx, w / 2, bw + hSize * 2, hSize, '#FF69B4');
-      drawHeart(ctx, w / 2, h - bw - hSize * 2, hSize, '#FF69B4');
+      const bw = Math.round(w * 0.045);
+      // White border with subtle shadow
+      ctx.shadowColor = 'rgba(24,20,16,0.15)';
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, w, bw);
+      ctx.fillRect(0, h - bw, w, bw);
+      ctx.fillRect(0, 0, bw, h);
+      ctx.fillRect(w - bw, 0, bw, h);
+      ctx.shadowBlur = 0;
+      // Red bows in corners
+      const bs = Math.round(w * 0.035);
+      drawStickerSync(ctx, 'kitty_bow', bw + bs, bw + bs, bs);
+      drawStickerSync(ctx, 'kitty_bow', w - bw - bs, bw + bs, bs);
+      drawStickerSync(ctx, 'kitty_bow', bw + bs, h - bw - bs, bs);
+      drawStickerSync(ctx, 'kitty_bow', w - bw - bs, h - bw - bs, bs);
+      // Kitty face at top center
+      drawStickerSync(ctx, 'kitty_face', w/2, bw + bs*0.8, bs*1.2);
     },
   },
   kittyPink: {
     name: 'Pink', category: 'themed',
     draw: (ctx, w, h) => {
-      const bw = Math.round(w * 0.04);
-      // Pink border
-      frameBorder(ctx, w, h, bw, '#FFB6C1');
-      // White inner border
+      const bw = Math.round(w * 0.045);
+      // Pink gradient border
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#FFB6C1');
+      grad.addColorStop(1, '#FF91A4');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, bw);
+      ctx.fillRect(0, h - bw, w, bw);
+      ctx.fillRect(0, 0, bw, h);
+      ctx.fillRect(w - bw, 0, bw, h);
+      // White inner line
       ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(bw + 2, bw + 2, w - bw * 2 - 4, h - bw * 2 - 4);
-      // Bows in corners
-      const bSize = Math.round(w * 0.025);
-      drawMouseBow(ctx, bw + bSize * 2, bw + bSize * 2, bSize, '#D64045');
-      drawMouseBow(ctx, w - bw - bSize * 2, h - bw - bSize * 2, bSize, '#D64045');
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bw + 2, bw + 2, w - bw*2 - 4, h - bw*2 - 4);
+      // Bows
+      const bs = Math.round(w * 0.03);
+      drawStickerSync(ctx, 'kitty_bow', bw + bs*1.5, bw + bs*1.5, bs);
+      drawStickerSync(ctx, 'kitty_bow', w - bw - bs*1.5, h - bw - bs*1.5, bs);
+      // Sparkles
+      drawStickerSync(ctx, 'sparkle', w*0.3, bw + bs, bs*0.8);
+      drawStickerSync(ctx, 'sparkle', w*0.7, h - bw - bs, bs*0.8);
     },
   },
   sparkle: {
     name: 'Sparkle', category: 'themed',
     draw: (ctx, w, h) => {
-      // Star/sparkle border (cute kawaii style)
-      const sSize = Math.round(w * 0.016);
-      const spacing = Math.round(w * 0.04);
-      // Top row
-      for (let x = spacing; x < w; x += spacing * 2) {
-        drawStar(ctx, x, spacing, sSize, '#FFD700');
+      const ss = Math.round(w * 0.02);
+      const spacing = Math.round(w * 0.045);
+      const colors = ['sparkle', 'star_yellow', 'star_pink', 'sparkle', 'star_white'];
+      // Top edge
+      for (let x = spacing; x < w; x += spacing * 1.5) {
+        drawStickerSync(ctx, colors[Math.floor(Math.random()*colors.length)], x, spacing, ss);
       }
-      // Bottom row
-      for (let x = spacing * 1.5; x < w; x += spacing * 2) {
-        drawStar(ctx, x, h - spacing, sSize, '#FF69B4');
+      // Bottom edge
+      for (let x = spacing * 0.7; x < w; x += spacing * 1.5) {
+        drawStickerSync(ctx, colors[Math.floor(Math.random()*colors.length)], x, h - spacing, ss);
       }
-      // Left column
-      for (let y = spacing * 1.5; y < h - spacing; y += spacing * 2) {
-        drawStar(ctx, spacing, y, sSize, '#D64045');
+      // Left edge
+      for (let y = spacing * 1.5; y < h - spacing; y += spacing * 1.5) {
+        drawStickerSync(ctx, colors[Math.floor(Math.random()*colors.length)], spacing, y, ss);
       }
-      // Right column
-      for (let y = spacing * 2; y < h - spacing; y += spacing * 2) {
-        drawStar(ctx, w - spacing, y, sSize, '#FFD700');
+      // Right edge
+      for (let y = spacing * 2; y < h - spacing; y += spacing * 1.5) {
+        drawStickerSync(ctx, colors[Math.floor(Math.random()*colors.length)], w - spacing, y, ss);
       }
     },
   },
 };
+

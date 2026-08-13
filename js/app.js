@@ -38,6 +38,11 @@ const app = {
     this.buildFrameChips();
     this.buildLayoutChips();
     this.loadGalleryPreview();
+    
+    // Preload sticker images for frames
+    if (typeof preloadStickers !== 'undefined') {
+      preloadStickers();
+    }
 
     // Check URL for room code
     const params = new URLSearchParams(window.location.search);

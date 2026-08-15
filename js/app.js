@@ -419,9 +419,21 @@ const app = {
       mctx.fillRect(34, 75, 40, 50);
       
       // Draw frame on top
-      if (frame.draw) frame.draw(mctx, 108, 144);
-      
-      thumb.appendChild(mini);
+      if (frame.framesNext && typeof FramesNext !== 'undefined') {
+        const url = FramesNext.thumbURL(key, app.currentLayout);
+        const im = document.createElement('img');
+        if (url) {
+          im.src = url;
+          im.style.cssText = 'width:100%;height:100%;display:block;object-fit:cover;object-position:center 20%';
+          thumb.appendChild(im);
+        } else {
+          if (frame.draw) frame.draw(mctx, 108, 144);
+          thumb.appendChild(mini);
+        }
+      } else {
+        if (frame.draw) frame.draw(mctx, 108, 144);
+        thumb.appendChild(mini);
+      }
       
       // Name label
       const label = document.createElement('div');
@@ -690,6 +702,21 @@ const app = {
         // Draw frame on top
         ctx.filter = 'none';
         const frameDef = FRAMES[this.currentFrame];
+        if (frameDef && frameDef.framesNext) {
+          // frames-next: full composite render (resizes canvas, injects photos+date)
+          FramesNext.renderToCanvas(frameDef.key ? frameDef.key : this.currentFrame.replace('nx-',''),
+            this.currentLayout, this.canvas, this.multiShots)
+            .then(ok => {
+              this.capturedImage = this.canvas.toDataURL('image/jpeg', 0.92);
+              resolve();
+            })
+            .catch(e => {
+              console.warn('[frames-next] render failed, falling back', e);
+              this.capturedImage = this.canvas.toDataURL('image/jpeg', 0.92);
+              resolve();
+            });
+          return;
+        }
         if (frameDef) frameDef.draw(ctx, W, H);
 
         this.capturedImage = this.canvas.toDataURL('image/jpeg', 0.92);
@@ -739,6 +766,19 @@ const app = {
 
     // Draw frame
     const frameDef = FRAMES[this.currentFrame];
+    if (frameDef && frameDef.framesNext) {
+      const self = this;
+      const snap = this.canvas.toDataURL('image/jpeg', 0.92);
+      FramesNext.renderToCanvas(this.currentFrame.replace('nx-',''), this.currentLayout, this.canvas, [snap])
+        .then(() => {
+          self.capturedImage = self.canvas.toDataURL('image/jpeg', 0.92);
+        })
+        .catch(e => {
+          console.warn('[frames-next] render failed', e);
+          self.capturedImage = self.canvas.toDataURL('image/jpeg', 0.92);
+        });
+      return;
+    }
     if (frameDef) frameDef.draw(ctx, W, H);
 
     // Store result

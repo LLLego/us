@@ -281,6 +281,10 @@ const app = {
   setFrame(key) {
     this.currentFrame = key;
     this.updateFrameOverlay();
+    // share the pick with the partner so both composites match
+    if (this.dataConnection && this.dataConnection.open) {
+      try { this.dataConnection.send({ action: 'setFrame', key }); } catch(e) {}
+    }
     // Update visual thumbnails active state
     document.querySelectorAll('.frame-thumb').forEach(t => {
       t.classList.toggle('active', t.dataset.frame === key);
@@ -512,6 +516,10 @@ const app = {
       key = 'strip-4'; // unsupported layout with an nx frame: snap to a supported one
     }
     this.currentLayout = key;
+    // share the pick with the partner so both composites match
+    if (this.dataConnection && this.dataConnection.open) {
+      try { this.dataConnection.send({ action: 'setLayout', key }); } catch(e) {}
+    }
     this.multiShots = [];
     this.multiShotInProgress = false;
     this.multiShotCancelled = false;
@@ -1143,11 +1151,27 @@ const app = {
         if (call) this.setupCall(call);
       }
       this.updateStatus('connected', this.mode === 'together' ? 'PAIRED' : 'CONNECTED');
+      // Host has been waiting on the room screen — pairing is done, bring them in
+      const active = document.querySelector('.screen.active');
+      if (this.mode === 'together' && active && active.id === 'room') {
+        this.showScreen('stage');
+        setTimeout(() => this.initFrameOverlay(), 100);
+      }
+      // announce our current picks so both sides converge on identical settings
+      try {
+        conn.send({ action: 'setFrame', key: this.currentFrame });
+        conn.send({ action: 'setLayout', key: this.currentLayout });
+      } catch(e) {}
     });
 
     conn.on('data', (data) => {
-      if (data && data.action === 'capture') {
-        this.handleSyncedCapture(data.captureTime);
+      if (!data) return;
+      if (data.action === 'capture') {
+        this.handleSyncedCapture(data.captureTime, data.frame, data.layout);
+      } else if (data.action === 'setFrame' && data.key) {
+        if (data.key !== this.currentFrame) this.setFrame(data.key);
+      } else if (data.action === 'setLayout' && data.key) {
+        if (data.key !== this.currentLayout) this.setLayout(data.key);
       }
     });
 
@@ -1182,7 +1206,10 @@ const app = {
   },
 
   // ===== SYNCED CAPTURE (for together mode) =====
-  handleSyncedCapture(captureTime) {
+  handleSyncedCapture(captureTime, frame, layout) {
+    // converge settings before the countdown starts — both sides must composite the same design
+    if (frame && frame !== this.currentFrame) this.setFrame(frame);
+    if (layout && layout !== this.currentLayout) this.setLayout(layout);
     const delay = captureTime - Date.now();
     if (delay > 0) {
       setTimeout(() => this.capture(), delay);
@@ -1194,8 +1221,8 @@ const app = {
   requestSyncedCapture() {
     if (this.dataConnection && this.dataConnection.open) {
       const captureTime = Date.now() + 3500; // 3.5s from now (3s countdown + buffer)
-      this.dataConnection.send({ action: 'capture', captureTime });
-      this.handleSyncedCapture(captureTime);
+      this.dataConnection.send({ action: 'capture', captureTime, frame: this.currentFrame, layout: this.currentLayout });
+      this.handleSyncedCapture(captureTime, this.currentFrame, this.currentLayout);
     } else {
       // Not connected or solo — just capture locally
       this.capture();

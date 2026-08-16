@@ -98,6 +98,7 @@ const app = {
   },
 
   goHome() {
+    this.hideRoomPill();
     this.stopFramePreview();
     const sheet = document.getElementById('frame-sheet');
     if (sheet) sheet.style.display = 'none';
@@ -161,8 +162,12 @@ const app = {
       document.getElementById('room-join').style.display = 'none';
       document.getElementById('room-code-display').textContent = this.roomCode;
 
-      // Start camera + PeerJS
+      // Start camera + PeerJS, then go straight INTO the booth —
+      // the code rides along in the stage topbar (tap to copy the invite)
       this.startCamera().then(() => {
+        this.showScreen('stage');
+        setTimeout(() => this.initFrameOverlay(), 100);
+        this.showRoomPill('WAITING · CODE ' + this.roomCode);
         this.initPeerJS();
       }).catch(() => {});
     }
@@ -170,15 +175,24 @@ const app = {
 
   // ===== CAMERA =====
   async startCamera() {
+    const videoCfg = {
+      facingMode: this.facingMode,
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    };
     try {
-      this.localStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: this.facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: this.mode === 'together',
-      });
+      const wantAudio = this.mode === 'together' && !this.micDenied;
+      try {
+        this.localStream = await navigator.mediaDevices.getUserMedia({ video: videoCfg, audio: wantAudio });
+      } catch (err) {
+        // mic denied/unavailable must NOT kill the camera — photos still work without voice
+        if (wantAudio && err && (err.name === 'NotAllowedError' || err.name === 'NotFoundError' || err.name === 'NotReadableError' || err.name === 'OverconstrainedError')) {
+          this.micDenied = true;
+          this.localStream = await navigator.mediaDevices.getUserMedia({ video: videoCfg, audio: false });
+        } else {
+          throw err;
+        }
+      }
       const video = document.getElementById('local-video');
       video.srcObject = this.localStream;
       this.applyFilterToVideo();
@@ -220,6 +234,26 @@ const app = {
   // mirror state lives here; default ON (selfie-style) to match the CSS default
   get mirrored() { return this._mirrored !== undefined ? this._mirrored : true; },
   set mirrored(v) { this._mirrored = v; },
+
+  showRoomPill(label, paired = false) {
+    let pill = document.getElementById('room-pill');
+    if (!pill) {
+      pill = document.createElement('button');
+      pill.id = 'room-pill';
+      pill.className = 'mirror-btn';
+      pill.onclick = () => this.copyRoomCode();
+      const tb = document.querySelector('.stage-topbar');
+      if (tb) tb.insertBefore(pill, document.getElementById('mirror-btn'));
+    }
+    pill.style.display = '';
+    pill.textContent = label;
+    pill.classList.toggle('paired', paired);
+  },
+
+  hideRoomPill() {
+    const pill = document.getElementById('room-pill');
+    if (pill) pill.style.display = 'none';
+  },
 
   toggleMirror() {
     this.mirrored = !this.mirrored;
@@ -1238,6 +1272,9 @@ const app = {
       if (this.mode === 'together' && active && active.id === 'room') {
         this.showScreen('stage');
         setTimeout(() => this.initFrameOverlay(), 100);
+      }
+      if (this.mode === 'together' && this.isHost) {
+        this.showRoomPill('CONNECTED · ' + this.roomCode, true);
       }
       // announce our current picks so both sides converge on identical settings
       try {

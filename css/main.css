@@ -237,7 +237,8 @@ body::before {
   flex-shrink: 0;
 }
 #mirror-btn.active { background: var(--fg); color: var(--bg); }
-#mirror-btn.active { background: var(--fg); color: var(--bg); }
+#room-pill { background: var(--accent-soft); }
+#room-pill.paired { background: var(--success, #3a7d44); color: #fff; border-color: var(--fg); }
 
 .exit-btn {
   background: none;

@@ -183,8 +183,28 @@ const app = {
       video.srcObject = this.localStream;
       this.applyFilterToVideo();
     } catch (err) {
-      alert('We need your camera for this to work.\n\nCheck your browser settings and try again.\n\nError: ' + err.message);
+      this.showCameraError(err && err.message ? err.message : String(err));
       throw err; // propagate so callers can react
+    }
+  },
+
+  showCameraError(detail) {
+    let box = document.getElementById('camera-error');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'camera-error';
+      box.style.cssText = 'position:fixed;inset:0;z-index:200;background:rgba(24,20,16,.94);display:flex;align-items:center;justify-content:center;padding:24px';
+      box.innerHTML = `<div style="background:var(--paper,#FDFBF7);border:2.5px solid var(--fg,#181410);box-shadow:6px 8px 0 var(--fg,#181410);max-width:420px;width:100%;padding:28px 24px;text-align:center">
+        <div style="font-family:'Fraunces',serif;font-size:26px;margin-bottom:6px">the camera said no</div>
+        <div style="font-family:'Caveat',cursive;font-size:18px;color:#D64045;margin-bottom:14px">it happens — let's try again</div>
+        <div style="font-family:'Space Mono',monospace;font-size:11px;color:rgba(24,20,16,.6);margin-bottom:18px;word-break:break-word">Check your browser's camera permission for this site, then retry.</div>
+        <div style="display:flex;gap:10px;justify-content:center">
+          <button id="cam-retry" style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.1em;padding:12px 22px;background:var(--fg,#181410);color:var(--bg,#F2EBE0);border:2px solid var(--fg,#181410);cursor:pointer">RETRY</button>
+          <button id="cam-back" style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.1em;padding:12px 22px;background:transparent;color:var(--fg,#181410);border:2px solid var(--fg,#181410);cursor:pointer">BACK</button>
+        </div></div>`;
+      document.body.appendChild(box);
+      box.querySelector('#cam-retry').onclick = () => { box.remove(); this.startCamera().catch(() => {}); };
+      box.querySelector('#cam-back').onclick = () => { box.remove(); this.showScreen('landing'); };
     }
   },
 
@@ -195,6 +215,20 @@ const app = {
     }
     const video = document.getElementById('local-video');
     if (video) video.srcObject = null;
+  },
+
+  // mirror state lives here; default ON (selfie-style) to match the CSS default
+  get mirrored() { return this._mirrored !== undefined ? this._mirrored : true; },
+  set mirrored(v) { this._mirrored = v; },
+
+  toggleMirror() {
+    this.mirrored = !this.mirrored;
+    const v = document.getElementById('local-video');
+    if (v) v.style.transform = this.mirrored ? 'scaleX(-1)' : 'scaleX(1)';
+    const btn = document.getElementById('mirror-btn');
+    if (btn) btn.textContent = this.mirrored ? 'MIRROR: ON' : 'MIRROR: OFF';
+    // keep the captured photos consistent with what you see
+    this.mirrorCaptures = this.mirrored;
   },
 
   async switchCamera() {
@@ -682,13 +716,18 @@ const app = {
     const filterDef = FILTERS[this.currentFilter];
     tctx.filter = filterDef ? filterDef.canvas : 'none';
 
+    const doMirror = this.mirrorCaptures;
     if (hasRemote) {
       const gutter = 12;
       const halfW = (W - gutter) / 2;
+      if (doMirror) { tctx.save(); tctx.translate(halfW, 0); tctx.scale(-1, 1); }
       this.drawCover(tctx, localVideo, 0, 0, halfW, H);
+      if (doMirror) tctx.restore();
       this.drawCover(tctx, remoteVideo, halfW + gutter, 0, halfW, H);
     } else {
+      if (doMirror) { tctx.save(); tctx.translate(W, 0); tctx.scale(-1, 1); }
       this.drawCover(tctx, localVideo, 0, 0, W, H);
+      if (doMirror) tctx.restore();
     }
 
     tctx.filter = 'none';
@@ -936,13 +975,24 @@ const app = {
   },
 
   // ===== DOWNLOAD =====
-  downloadPhoto() {
+  async downloadPhoto() {
     if (!this.capturedImage) return;
-    const link = document.createElement('a');
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    link.download = `us_${this.mode}_${ts}.jpg`;
-    link.href = this.capturedImage;
-    link.click();
+    const name = `us_${this.mode}_${ts}.jpg`;
+    try {
+      const blob = await (await fetch(this.capturedImage)).blob();
+      const url = URL.createObjectURL(blob);
+      // iOS Safari cannot .click() a download link reliably — open in a tab so
+      // long-press → "Save to Photos" / Share works, everywhere else it downloads.
+      const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const link = document.createElement('a');
+      link.href = url; link.download = name; link.rel = 'noopener';
+      link.target = isIOS ? '_blank' : '_self';
+      document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch (e) {
+      window.open(this.capturedImage, '_blank');
+    }
   },
 
   // ===== GALLERY =====

@@ -163,7 +163,8 @@ const FramesNext = {
     if (!t || !lk) return;
     const spec = t.layouts[lk];
     const tpl = await this._png(spec.png);
-    const s = Math.min(w / spec.w, h / spec.h);
+    // cover-fit: the frame mat must fill the viewfinder edge-to-edge (slots may crop slightly, like a real booth)
+    const s = Math.max(w / spec.w, h / spec.h);
     const ox = (w - spec.w * s) / 2, oy = (h - spec.h * s) / 2;
 
     ctx.clearRect(0, 0, w, h);

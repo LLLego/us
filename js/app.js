@@ -269,6 +269,7 @@ const app = {
     if (!row) return;
     row.innerHTML = '';
     for (const [key, f] of Object.entries(FRAMES)) {
+      if (key !== 'none' && !f.framesNext) continue; // only real designs — old canvas frames retired
       const chip = document.createElement('button');
       chip.className = 'frame-chip' + (key === this.currentFrame ? ' active' : '');
       chip.textContent = f.name;
@@ -280,6 +281,7 @@ const app = {
 
   setFrame(key) {
     this.currentFrame = key;
+    this.applyPreviewAspect();
     this.updateFrameOverlay();
     // share the pick with the partner so both composites match
     if (this.dataConnection && this.dataConnection.open) {
@@ -363,6 +365,33 @@ const app = {
     }
   },
 
+  // shape the live stage to the frame's own aspect so the camera IS the frame (no letterbox bands)
+  applyPreviewAspect() {
+    const vc = document.getElementById('video-container');
+    if (!vc) return;
+    const t = (this.currentFrame || '').startsWith('nx-') ? FramesNext.get(this.currentFrame.replace('nx-','')) : null;
+    const lk = FramesNext.layoutKey(this.currentLayout);
+    let ar;
+    if (t && lk && t.layouts[lk]) {
+      ar = (t.layouts[lk].w / t.layouts[lk].h).toFixed(4);
+    } else if (this.currentLayout === 'strip-4') {
+      ar = '0.3333';
+    } else {
+      ar = '0.78';
+    }
+    vc.style.aspectRatio = ar;
+    // vertical strips on short screens: cap by height so it never overflows the stage
+    if (parseFloat(ar) < 0.5) {
+      vc.style.maxHeight = '100%';
+      vc.style.width = 'auto';
+      vc.style.maxWidth = '100%';
+    } else {
+      vc.style.maxHeight = '';
+      vc.style.width = '';
+      vc.style.maxWidth = '';
+    }
+  },
+
   _fmtPrevDate() {
     const d = new Date();
     const p = n => String(n).padStart(2, '0');
@@ -408,6 +437,7 @@ const app = {
     const ordered = Object.entries(FRAMES).sort((a, b) =>
       (b[1].framesNext ? 1 : 0) - (a[1].framesNext ? 1 : 0));
     for (const [key, frame] of ordered) {
+      if (key !== 'none' && !frame.framesNext) continue; // old canvas frames retired from the picker
       // Category filter
       if (this.frameCategory !== 'all' && frame.category && frame.category !== this.frameCategory) continue;
       
@@ -520,6 +550,7 @@ const app = {
     if (this.dataConnection && this.dataConnection.open) {
       try { this.dataConnection.send({ action: 'setLayout', key }); } catch(e) {}
     }
+    this.applyPreviewAspect();
     this.multiShots = [];
     this.multiShotInProgress = false;
     this.multiShotCancelled = false;

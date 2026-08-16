@@ -450,6 +450,7 @@ const app = {
       const label = document.createElement('div');
       label.textContent = frame.name;
       label.style.cssText = 'position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-family:Space Mono,monospace;font-size:7px;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg);opacity:0.6;white-space:nowrap;overflow:hidden';
+      label.className = 'thumb-label';
       thumb.appendChild(label);
       
       thumb.onclick = () => {

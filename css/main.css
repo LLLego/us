@@ -633,6 +633,16 @@ body::before {
   padding-bottom: calc(var(--s) * 4 + env(safe-area-inset-bottom));
 }
 
+/* selected frame in picker */
+.frame-thumb.active {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.frame-thumb.active .thumb-label,
+.frame-thumb.active > div:last-child {
+  color: var(--accent);
+}
+
 /* ===== UTILITY ===== */
 .hidden { display: none !important; }
 .center-text { text-align: center; }

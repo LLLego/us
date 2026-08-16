@@ -19,7 +19,7 @@ const FILTERS = {
     canvas: 'sepia(0.65) contrast(1.1) brightness(0.95) saturate(0.85)',
   },
   warm: {
-    name: 'Manila Heat',
+    name: 'Manila',
     css: 'sepia(0.4) saturate(1.5) contrast(1.2) hue-rotate(-10deg)',
     canvas: 'sepia(0.4) saturate(1.5) contrast(1.2) hue-rotate(-10deg)',
   },

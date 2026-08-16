@@ -581,7 +581,7 @@ body::before {
   .controls-bar {
     flex-direction: row;
     gap: calc(var(--s));
-    padding: calc(var(--s)) calc(var(--s) * 2) calc(var(--s) * 3 + env(safe-area-inset-bottom));
+    padding: calc(var(--s)) calc(var(--s) * 2) calc(var(--s) * 3 + env(safe-area-inset-bottom, 0px) + 8px);
     flex-shrink: 0;
   }
   .shutter-btn {

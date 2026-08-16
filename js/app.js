@@ -508,6 +508,9 @@ const app = {
   },
 
   setLayout(key) {
+    if (!FramesNext.supports(key) && FRAMES[this.currentFrame] && FRAMES[this.currentFrame].framesNext) {
+      key = 'strip-4'; // unsupported layout with an nx frame: snap to a supported one
+    }
     this.currentLayout = key;
     this.multiShots = [];
     this.multiShotInProgress = false;

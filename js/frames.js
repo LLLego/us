@@ -7,7 +7,6 @@ const LAYOUTS = {
   single: { name: 'Single', shots: 1, description: 'One photo' },
   'strip-4': { name: 'Strip 1×4', shots: 4, description: 'Classic vertical strip' },
   'grid-2x2': { name: 'Grid 2×2', shots: 4, description: 'Four photos in a square' },
-  'strip-3': { name: 'Strip 1×3', shots: 3, description: 'Three photos vertical' },
 };
 
 // ===== HELPER FUNCTIONS =====

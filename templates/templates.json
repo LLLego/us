@@ -1,0 +1,1365 @@
+{
+ "templates": [
+  {
+   "key": "pooh",
+   "label": "Pooh",
+   "category": "casts",
+   "layouts": {
+    "strip": {
+     "png": "templates/pooh-strip.png",
+     "w": 900,
+     "h": 2700,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 42,
+       "y": 280,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 864,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 1447,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 2030,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 716.546875,
+       "y": 2628.5,
+       "w": 129.453125,
+       "h": 33,
+       "fontSize": 12,
+       "color": "rgb(255, 255, 255)",
+       "bg": "rgb(107, 78, 46)",
+       "parentBg": null,
+       "radius": 999,
+       "letterSpacing": 2,
+       "pill": true
+      }
+     ]
+    },
+    "grid": {
+     "png": "templates/pooh-grid.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 54,
+       "y": 300,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 300,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 54,
+       "y": 1099,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 1099,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 1352.078125,
+       "y": 1915,
+       "w": 153.921875,
+       "h": 40,
+       "fontSize": 16,
+       "color": "rgb(255, 255, 255)",
+       "bg": "rgb(107, 78, 46)",
+       "parentBg": null,
+       "radius": 999,
+       "letterSpacing": 2,
+       "pill": true
+      }
+     ]
+    },
+    "single": {
+     "png": "templates/pooh-single.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 1,
+     "slots": [
+      {
+       "x": 54,
+       "y": 320,
+       "w": 1452,
+       "h": 1570,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 1352.078125,
+       "y": 1925,
+       "w": 153.921875,
+       "h": 40,
+       "fontSize": 16,
+       "color": "rgb(255, 255, 255)",
+       "bg": "rgb(107, 78, 46)",
+       "parentBg": null,
+       "radius": 999,
+       "letterSpacing": 2,
+       "pill": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "key": "poohf",
+   "label": "Hundred Acre Club",
+   "category": "casts",
+   "layouts": {
+    "strip": {
+     "png": "templates/poohf-strip.png",
+     "w": 900,
+     "h": 2700,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 42,
+       "y": 280,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 864,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 1447,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 2030,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 716.546875,
+       "y": 2628.5,
+       "w": 129.453125,
+       "h": 33,
+       "fontSize": 12,
+       "color": "rgb(255, 255, 255)",
+       "bg": "rgb(107, 78, 46)",
+       "parentBg": null,
+       "radius": 999,
+       "letterSpacing": 2,
+       "pill": true
+      }
+     ]
+    },
+    "grid": {
+     "png": "templates/poohf-grid.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 54,
+       "y": 300,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 300,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 54,
+       "y": 1099,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 1099,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 1352.078125,
+       "y": 1915,
+       "w": 153.921875,
+       "h": 40,
+       "fontSize": 16,
+       "color": "rgb(255, 255, 255)",
+       "bg": "rgb(107, 78, 46)",
+       "parentBg": null,
+       "radius": 999,
+       "letterSpacing": 2,
+       "pill": true
+      }
+     ]
+    },
+    "single": {
+     "png": "templates/poohf-single.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 1,
+     "slots": [
+      {
+       "x": 54,
+       "y": 320,
+       "w": 1452,
+       "h": 1570,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 1352.078125,
+       "y": 1925,
+       "w": 153.921875,
+       "h": 40,
+       "fontSize": 16,
+       "color": "rgb(255, 255, 255)",
+       "bg": "rgb(107, 78, 46)",
+       "parentBg": null,
+       "radius": 999,
+       "letterSpacing": 2,
+       "pill": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "key": "poohh",
+   "label": "Hunny Love",
+   "category": "casts",
+   "layouts": {
+    "strip": {
+     "png": "templates/poohh-strip.png",
+     "w": 900,
+     "h": 2700,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 42,
+       "y": 280,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 864,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 1447,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 2030,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 716.546875,
+       "y": 2628.5,
+       "w": 129.453125,
+       "h": 33,
+       "fontSize": 12,
+       "color": "rgb(255, 255, 255)",
+       "bg": "rgb(122, 74, 56)",
+       "parentBg": null,
+       "radius": 999,
+       "letterSpacing": 2,
+       "pill": true
+      }
+     ]
+    },
+    "grid": {
+     "png": "templates/poohh-grid.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 54,
+       "y": 300,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 300,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 54,
+       "y": 1099,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 1099,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 1352.078125,
+       "y": 1915,
+       "w": 153.921875,
+       "h": 40,
+       "fontSize": 16,
+       "color": "rgb(255, 255, 255)",
+       "bg": "rgb(122, 74, 56)",
+       "parentBg": null,
+       "radius": 999,
+       "letterSpacing": 2,
+       "pill": true
+      }
+     ]
+    },
+    "single": {
+     "png": "templates/poohh-single.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 1,
+     "slots": [
+      {
+       "x": 54,
+       "y": 320,
+       "w": 1452,
+       "h": 1570,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 1352.078125,
+       "y": 1925,
+       "w": 153.921875,
+       "h": 40,
+       "fontSize": 16,
+       "color": "rgb(255, 255, 255)",
+       "bg": "rgb(122, 74, 56)",
+       "parentBg": null,
+       "radius": 999,
+       "letterSpacing": 2,
+       "pill": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "key": "kitty",
+   "label": "Kitty Cloud",
+   "category": "casts",
+   "layouts": {
+    "strip": {
+     "png": "templates/kitty-strip.png",
+     "w": 900,
+     "h": 2700,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 42,
+       "y": 280,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 864,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 1447,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 2030,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 692.078125,
+       "y": 2625,
+       "w": 153.921875,
+       "h": 40,
+       "fontSize": 16,
+       "color": "rgb(255, 255, 255)",
+       "bg": "rgb(176, 74, 114)",
+       "parentBg": null,
+       "radius": 999,
+       "letterSpacing": 2,
+       "pill": true
+      }
+     ]
+    },
+    "grid": {
+     "png": "templates/kitty-grid.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 54,
+       "y": 300,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 300,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 54,
+       "y": 1099,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 1099,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 1352.078125,
+       "y": 1915,
+       "w": 153.921875,
+       "h": 40,
+       "fontSize": 16,
+       "color": "rgb(255, 255, 255)",
+       "bg": "rgb(176, 74, 114)",
+       "parentBg": null,
+       "radius": 999,
+       "letterSpacing": 2,
+       "pill": true
+      }
+     ]
+    },
+    "single": {
+     "png": "templates/kitty-single.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 1,
+     "slots": [
+      {
+       "x": 54,
+       "y": 320,
+       "w": 1452,
+       "h": 1570,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 1352.078125,
+       "y": 1925,
+       "w": 153.921875,
+       "h": 40,
+       "fontSize": 16,
+       "color": "rgb(255, 255, 255)",
+       "bg": "rgb(176, 74, 114)",
+       "parentBg": null,
+       "radius": 999,
+       "letterSpacing": 2,
+       "pill": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "key": "pucca",
+   "label": "Pucca Loves Garu",
+   "category": "casts",
+   "layouts": {
+    "strip": {
+     "png": "templates/pucca-strip.png",
+     "w": 900,
+     "h": 2700,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 42,
+       "y": 280,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 864,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 1447,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 2030,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 560.71875,
+       "y": 2633,
+       "w": 107.921875,
+       "h": 24,
+       "fontSize": 16,
+       "color": "rgb(140, 36, 48)",
+       "bg": null,
+       "parentBg": null,
+       "radius": 0,
+       "letterSpacing": 1,
+       "pill": false
+      }
+     ]
+    },
+    "grid": {
+     "png": "templates/pucca-grid.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 54,
+       "y": 300,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 300,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 54,
+       "y": 1099,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 1099,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 560.71875,
+       "y": 1923,
+       "w": 107.921875,
+       "h": 24,
+       "fontSize": 16,
+       "color": "rgb(140, 36, 48)",
+       "bg": null,
+       "parentBg": null,
+       "radius": 0,
+       "letterSpacing": 1,
+       "pill": false
+      }
+     ]
+    },
+    "single": {
+     "png": "templates/pucca-single.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 1,
+     "slots": [
+      {
+       "x": 54,
+       "y": 320,
+       "w": 1452,
+       "h": 1570,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 560.71875,
+       "y": 1933,
+       "w": 107.921875,
+       "h": 24,
+       "fontSize": 16,
+       "color": "rgb(140, 36, 48)",
+       "bg": null,
+       "parentBg": null,
+       "radius": 0,
+       "letterSpacing": 1,
+       "pill": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "key": "puccah",
+   "label": "Pucca Is Present",
+   "category": "casts",
+   "layouts": {
+    "strip": {
+     "png": "templates/puccah-strip.png",
+     "w": 900,
+     "h": 2700,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 42,
+       "y": 280,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 864,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 1447,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 2030,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 646.03125,
+       "y": 2633,
+       "w": 107.921875,
+       "h": 24,
+       "fontSize": 16,
+       "color": "rgb(140, 36, 48)",
+       "bg": null,
+       "parentBg": null,
+       "radius": 0,
+       "letterSpacing": 1,
+       "pill": false
+      }
+     ]
+    },
+    "grid": {
+     "png": "templates/puccah-grid.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 54,
+       "y": 300,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 300,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 54,
+       "y": 1099,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 1099,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 646.03125,
+       "y": 1923,
+       "w": 107.921875,
+       "h": 24,
+       "fontSize": 16,
+       "color": "rgb(140, 36, 48)",
+       "bg": null,
+       "parentBg": null,
+       "radius": 0,
+       "letterSpacing": 1,
+       "pill": false
+      }
+     ]
+    },
+    "single": {
+     "png": "templates/puccah-single.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 1,
+     "slots": [
+      {
+       "x": 54,
+       "y": 320,
+       "w": 1452,
+       "h": 1570,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 646.03125,
+       "y": 1933,
+       "w": 107.921875,
+       "h": 24,
+       "fontSize": 16,
+       "color": "rgb(140, 36, 48)",
+       "bg": null,
+       "parentBg": null,
+       "radius": 0,
+       "letterSpacing": 1,
+       "pill": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "key": "puccap",
+   "label": "Say Garu!",
+   "category": "casts",
+   "layouts": {
+    "strip": {
+     "png": "templates/puccap-strip.png",
+     "w": 900,
+     "h": 2700,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 42,
+       "y": 280,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 864,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 1447,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 2030,
+       "w": 816,
+       "h": 560,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 692.078125,
+       "y": 2625,
+       "w": 153.921875,
+       "h": 40,
+       "fontSize": 16,
+       "color": "rgb(255, 255, 255)",
+       "bg": "rgb(140, 36, 48)",
+       "parentBg": null,
+       "radius": 999,
+       "letterSpacing": 2,
+       "pill": true
+      }
+     ]
+    },
+    "grid": {
+     "png": "templates/puccap-grid.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 54,
+       "y": 300,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 300,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 54,
+       "y": 1099,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 1099,
+       "w": 712,
+       "h": 771,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 1352.078125,
+       "y": 1915,
+       "w": 153.921875,
+       "h": 40,
+       "fontSize": 16,
+       "color": "rgb(255, 255, 255)",
+       "bg": "rgb(140, 36, 48)",
+       "parentBg": null,
+       "radius": 999,
+       "letterSpacing": 2,
+       "pill": true
+      }
+     ]
+    },
+    "single": {
+     "png": "templates/puccap-single.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 1,
+     "slots": [
+      {
+       "x": 54,
+       "y": 320,
+       "w": 1452,
+       "h": 1570,
+       "r": 0
+      }
+     ],
+     "dates": [
+      {
+       "x": 1352.078125,
+       "y": 1925,
+       "w": 153.921875,
+       "h": 40,
+       "fontSize": 16,
+       "color": "rgb(255, 255, 255)",
+       "bg": "rgb(140, 36, 48)",
+       "parentBg": null,
+       "radius": 999,
+       "letterSpacing": 2,
+       "pill": true
+      }
+     ]
+    }
+   }
+  },
+  {
+   "key": "cupid",
+   "label": "Cupid",
+   "category": "craft",
+   "layouts": {
+    "strip": {
+     "png": "templates/cupid-strip.png",
+     "w": 900,
+     "h": 2700,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 42,
+       "y": 170,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 781,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 1392,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 2003,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      }
+     ],
+     "dates": []
+    },
+    "grid": {
+     "png": "templates/cupid-grid.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 54,
+       "y": 190,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 190,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      },
+      {
+       "x": 54,
+       "y": 1044,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 1044,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      }
+     ],
+     "dates": []
+    },
+    "single": {
+     "png": "templates/cupid-single.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 1,
+     "slots": [
+      {
+       "x": 54,
+       "y": 165,
+       "w": 1452,
+       "h": 1725,
+       "r": 0
+      }
+     ],
+     "dates": []
+    }
+   }
+  },
+  {
+   "key": "purikura",
+   "label": "Purikura",
+   "category": "craft",
+   "layouts": {
+    "strip": {
+     "png": "templates/purikura-strip.png",
+     "w": 900,
+     "h": 2700,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 42,
+       "y": 170,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 781,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 1392,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 2003,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      }
+     ],
+     "dates": []
+    },
+    "grid": {
+     "png": "templates/purikura-grid.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 54,
+       "y": 190,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 190,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      },
+      {
+       "x": 54,
+       "y": 1044,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 1044,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      }
+     ],
+     "dates": []
+    },
+    "single": {
+     "png": "templates/purikura-single.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 1,
+     "slots": [
+      {
+       "x": 54,
+       "y": 165,
+       "w": 1452,
+       "h": 1725,
+       "r": 0
+      }
+     ],
+     "dates": []
+    }
+   }
+  },
+  {
+   "key": "dots",
+   "label": "Film Club",
+   "category": "craft",
+   "layouts": {
+    "strip": {
+     "png": "templates/dots-strip.png",
+     "w": 900,
+     "h": 2700,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 42,
+       "y": 170,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 781,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 1392,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 2003,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      }
+     ],
+     "dates": []
+    },
+    "grid": {
+     "png": "templates/dots-grid.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 54,
+       "y": 190,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 190,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      },
+      {
+       "x": 54,
+       "y": 1044,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 1044,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      }
+     ],
+     "dates": []
+    },
+    "single": {
+     "png": "templates/dots-single.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 1,
+     "slots": [
+      {
+       "x": 54,
+       "y": 165,
+       "w": 1452,
+       "h": 1725,
+       "r": 0
+      }
+     ],
+     "dates": []
+    }
+   }
+  },
+  {
+   "key": "gingham",
+   "label": "Special Moment",
+   "category": "craft",
+   "layouts": {
+    "strip": {
+     "png": "templates/gingham-strip.png",
+     "w": 900,
+     "h": 2700,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 42,
+       "y": 170,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 781,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 1392,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      },
+      {
+       "x": 42,
+       "y": 2003,
+       "w": 816,
+       "h": 587,
+       "r": 0
+      }
+     ],
+     "dates": []
+    },
+    "grid": {
+     "png": "templates/gingham-grid.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 4,
+     "slots": [
+      {
+       "x": 54,
+       "y": 190,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 190,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      },
+      {
+       "x": 54,
+       "y": 1044,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      },
+      {
+       "x": 794,
+       "y": 1044,
+       "w": 712,
+       "h": 826,
+       "r": 0
+      }
+     ],
+     "dates": []
+    },
+    "single": {
+     "png": "templates/gingham-single.png",
+     "w": 1560,
+     "h": 2000,
+     "shots": 1,
+     "slots": [
+      {
+       "x": 54,
+       "y": 165,
+       "w": 1452,
+       "h": 1725,
+       "r": 0
+      }
+     ],
+     "dates": []
+    }
+   }
+  }
+ ]
+}

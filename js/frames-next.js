@@ -1,45 +1,37 @@
-// ===== FRAMES-NEXT BRIDGE =====
-// Loads the frames-next library (33 authored HTML frames) into the app.
-// A frames-next frame is a FULL composite (mat + photos + chrome), so when one
-// is active the export canvas is resized to the frame's native dims and the
-// frame renders the entire image — photos + live date injected via __FRAME__.
+// ===== FRAMES-NEXT BRIDGE v2 =====
+// iOS-proof: pre-rendered transparent templates + pure canvas compositing.
+// No hidden iframes, no html2canvas, no runtime Google Fonts on the device.
 
 const FramesNext = {
-  manifest: null,
-  overlayDiv: null,
+  tpl: null,          // templates.json
+  _pngs: new Map(),   // Image cache
 
   async init() {
     try {
-      const res = await fetch('frames/manifest.json');
-      this.manifest = await res.json();
+      const res = await fetch('templates/templates.json');
+      this.tpl = await res.json();
     } catch (e) {
-      console.warn('[frames-next] manifest not loaded:', e);
-      this.manifest = { frames: [] };
+      console.warn('[frames-next] templates not loaded:', e);
+      this.tpl = { templates: [] };
     }
-    this.overlayDiv = document.createElement('div');
-    this.overlayDiv.style.cssText = 'position:absolute;left:-99999px;top:0;';
-    document.body.appendChild(this.overlayDiv);
+    // overlay host for the live stage preview
+    this.overlayHost = document.createElement('div');
+    this.overlayHost.style.cssText = 'position:absolute;left:-99999px;top:0;';
+    document.body.appendChild(this.overlayHost);
   },
 
-  entries() {
-    return this.manifest ? this.manifest.frames : [];
-  },
+  entries() { return this.tpl ? this.tpl.templates : []; },
 
-  get(key) {
-    return this.entries().find(f => f.key === key) || null;
-  },
+  get(key) { return this.entries().find(t => t.key === key) || null; },
 
-  // map app layout -> frames-next layout
   layoutKey(appLayout) {
     if (appLayout === 'strip-4') return 'strip';
     if (appLayout === 'grid-2x2') return 'grid';
     if (appLayout === 'single') return 'single';
-    return null; // strip-3 etc: not in library
+    return null;
   },
 
-  supports(appLayout) {
-    return this.layoutKey(appLayout) !== null;
-  },
+  supports(appLayout) { return this.layoutKey(appLayout) !== null; },
 
   _fmtDate() {
     const d = new Date();
@@ -47,92 +39,182 @@ const FramesNext = {
     return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
   },
 
-  // Render a frame into a canvas. photos = array of dataURLs.
-  async renderToCanvas(key, appLayout, canvas, photos) {
-    const frame = this.get(key);
-    const lk = this.layoutKey(appLayout);
-    if (!frame || !lk) return false;
-    const spec = frame.layouts[lk];
+  _png(url) {
+    if (this._pngs.has(url)) return this._pngs.get(url);
+    const p = new Promise((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = () => rej(new Error('img fail ' + url));
+      i.src = url;
+    });
+    this._pngs.set(url, p);
+    p.catch(() => this._pngs.delete(url));
+    return p;
+  },
 
-    // resize export canvas to native frame dims
+  // composite onto a canvas: template + photos (cover, rounded-clip) + live date
+  async renderToCanvas(key, appLayout, canvas, photos) {
+    const t = this.get(key);
+    const lk = this.layoutKey(appLayout);
+    if (!t || !lk) return false;
+    const spec = t.layouts[lk];
+
     canvas.width = spec.w;
     canvas.height = spec.h;
-
-    // fetch frame HTML and inject photos + date
-    let html;
-    try {
-      const res = await fetch(spec.file);
-      html = await res.text();
-    } catch (e) {
-      console.warn('[frames-next] frame file failed:', spec.file, e);
-      return false;
-    }
-    const F = { date: this._fmtDate() };
-    if (photos && photos.length) F.photos = photos;
-    const payload = '<script>window.__FRAME__ = ' + JSON.stringify(F) + '<\/script>';
-    html = html.replace('</head>', payload + '</head>');
-    // srcdoc-style isolation inside hidden div
-    this.overlayDiv.innerHTML = '<iframe style="border:0;width:' + spec.w + 'px;height:' + spec.h + 'px" ' +
-      'srcdoc="' + html.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '"></iframe>';
-
-    // wait for the iframe to signal readiness (fonts + images)
-    const iframe = this.overlayDiv.firstChild;
-    const t0 = performance.now();
-    while (performance.now() - t0 < 9000) {
-      const body = iframe.contentDocument && iframe.contentDocument.body;
-      if (body && body.getAttribute('data-fr-ready') === '1' &&
-          [...iframe.contentDocument.images].every(im => im.complete)) {
-        break;
-      }
-      await new Promise(r => setTimeout(r, 120));
-    }
-
-    // render iframe content to canvas via html2canvas
-    const doc = iframe.contentDocument;
-    const target = doc.querySelector('.frame');
-    const shot = await html2canvas(target, {
-      backgroundColor: null,
-      width: spec.w,
-      height: spec.h,
-      scale: 1,
-      logging: false,
-      useCORS: true,
-      allowTaint: false,
-    });
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(shot, 0, 0);
-    this.overlayDiv.innerHTML = '';
+    ctx.clearRect(0, 0, spec.w, spec.h);
+
+    // 1. photos first (under the mat)
+    const imgPs = (photos && photos.length ? photos : []).slice(0, spec.slots.length)
+      .map(u => this._png(u));
+    const imgs = await Promise.all(imgPs.map(p => p.catch(() => null)));
+
+    spec.slots.forEach((s, i) => {
+      const im = imgs[i] || imgs[imgs.length - 1];
+      if (!im) return;
+      ctx.save();
+      this._roundClip(ctx, s);
+      // cover-fit
+      const sc = Math.max(s.w / im.width, s.h / im.height);
+      const dw = im.width * sc, dh = im.height * sc;
+      ctx.drawImage(im, s.x + (s.w - dw) / 2, s.y + (s.h - dh) / 2, dw, dh);
+      ctx.restore();
+    });
+
+    // 2. template on top
+    const tpl = await this._png(spec.png);
+    ctx.drawImage(tpl, 0, 0);
+
+    // 3. live date
+    this._drawDates(ctx, spec);
     return true;
   },
 
-  // live stage preview: draws the frame PNG contain-fit into the overlay canvas
-  _imgCache: new Map(),
-  _pvToken: 0,
+  _roundClip(ctx, s) {
+    const r = Math.min(s.r || 0, s.w / 2, s.h / 2);
+    ctx.beginPath();
+    ctx.moveTo(s.x + r, s.y);
+    ctx.arcTo(s.x + s.w, s.y, s.x + s.w, s.y + s.h, r);
+    ctx.arcTo(s.x + s.w, s.y + s.h, s.x, s.y + s.h, r);
+    ctx.arcTo(s.x, s.y + s.h, s.x, s.y, r);
+    ctx.arcTo(s.x, s.y, s.x + s.w, s.y, r);
+    ctx.closePath();
+    ctx.clip();
+  },
+
+  _drawDates(ctx, spec) {
+    const text = this._fmtDate();
+    for (const d of (spec.dates || [])) {
+      ctx.save();
+      if (d.bg) {
+        // pill style: bg rounded rect + white text
+        ctx.fillStyle = d.bg;
+        this._rr(ctx, d.x, d.y, d.w, d.h, Math.min(d.radius || 999, d.h / 2));
+        ctx.fill();
+      }
+      ctx.fillStyle = d.color || '#fff';
+      ctx.font = `${d.pill ? '700 ' : ''}${d.fontSize}px "Space Mono", monospace`;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = d.bg ? 'center' : 'left';
+      const tx = d.bg ? d.x + d.w / 2 : d.x;
+      const ty = d.y + d.h / 2 + 0.5;
+      if (d.letterSpacing) {
+        ctx.letterSpacing = d.letterSpacing + 'px'; // supported in modern engines; harmless if not
+      }
+      ctx.fillText(text, tx, ty);
+      ctx.restore();
+    }
+  },
+
+  _rr(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  },
+
+  // ===== LIVE STAGE PREVIEW =====
+  // Draws the frame design OVER the live camera (in the overlay canvas), with the
+  // camera feed visible through the empty photo slots.
   async previewInto(canvas, key, appLayout, ghost) {
     const url = this.thumbURL(key, appLayout);
     if (!url) return false;
-    let img = this._imgCache.get(url);
-    if (!img) {
-      img = await new Promise((res, rej) => {
-        const i = new Image();
-        i.onload = () => res(i);
-        i.onerror = rej;
-        i.src = url;
-      });
-      this._imgCache.set(url, img);
-    }
-    const ctx = canvas.getContext('2d');
-    const s = Math.min(canvas.width / img.width, canvas.height / img.height);
-    const w = img.width * s, h = img.height * s;
-    ctx.save();
-    ctx.globalAlpha = ghost ? 0.45 : 1;
-    ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
-    ctx.restore();
-    return true;
+    try {
+      const img = await this._png(url);
+      const ctx = canvas.getContext('2d');
+      const s = Math.min(canvas.width / img.width, canvas.height / img.height);
+      const w = img.width * s, h = img.height * s;
+      ctx.save();
+      ctx.globalAlpha = ghost ? 0.45 : 1;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+      ctx.restore();
+      return true;
+    } catch (e) { return false; }
   },
 
-  // thumbnail for the picker sheet (static PNG from build)
+  // scaled live preview: template + live video in slots + live date
+  async drawLivePreview(ctx, w, h, key, appLayout, videoEl, dateStr) {
+    const t = this.get(key);
+    const lk = this.layoutKey(appLayout);
+    if (!t || !lk) return;
+    const spec = t.layouts[lk];
+    const tpl = await this._png(spec.png);
+    const s = Math.min(w / spec.w, h / spec.h);
+    const ox = (w - spec.w * s) / 2, oy = (h - spec.h * s) / 2;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.translate(ox, oy);
+    ctx.scale(s, s);
+
+    // slots: live video cover-fit (only if playing)
+    const vidOk = videoEl && videoEl.readyState >= 2 && videoEl.videoWidth > 0;
+    for (const sl of spec.slots) {
+      ctx.save();
+      const r = Math.min(sl.r || 0, sl.w / 2, sl.h / 2);
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(sl.x, sl.y, sl.w, sl.h, r) : ctx.rect(sl.x, sl.y, sl.w, sl.h);
+      ctx.clip();
+      ctx.fillStyle = 'rgba(24,20,16,0.25)'; // dim placeholder until camera ready
+      ctx.fillRect(sl.x, sl.y, sl.w, sl.h);
+      if (vidOk) {
+        const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+        // un-mirror selfie view
+        ctx.translate(sl.x + sl.w, 0);
+        ctx.scale(-1, 1);
+        const sc = Math.max(sl.w / vw, sl.h / vh);
+        const dw = vw * sc, dh = vh * sc;
+        ctx.drawImage(videoEl, (sl.w - dw) / 2, sl.y + (sl.h - dh) / 2, dw, dh);
+      }
+      ctx.restore();
+    }
+
+    // template on top
+    ctx.drawImage(tpl, 0, 0);
+
+    // live date
+    for (const d of (spec.dates || [])) {
+      ctx.save();
+      if (d.bg) {
+        ctx.fillStyle = d.bg;
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(d.x, d.y, d.w, d.h, Math.min(d.radius || 999, d.h / 2)) : ctx.rect(d.x, d.y, d.w, d.h);
+        ctx.fill();
+      }
+      ctx.fillStyle = d.color || '#fff';
+      ctx.font = `${d.pill ? '700 ' : ''}${d.fontSize}px "Space Mono", monospace`;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = d.bg ? 'center' : 'left';
+      ctx.fillText(dateStr, d.bg ? d.x + d.w / 2 : d.x, d.y + d.h / 2 + 0.5);
+      ctx.restore();
+    }
+    ctx.restore();
+  },
+
   thumbURL(key, appLayout) {
     const lk = this.layoutKey(appLayout);
     const id = key.replace(/^nx-/, '');
@@ -140,39 +222,31 @@ const FramesNext = {
   },
 };
 
-// App-facing FRAMES registry extension:
-// each frames-next design becomes a FRAMES entry whose draw() defers to the bridge.
+// App-facing FRAMES registry extension
 FramesNext.init();
 (function register() {
   if (typeof FRAMES === 'undefined') return;
   const maxWait = 4000;
   const t0 = performance.now();
   function doRegister() {
-    for (const f of FramesNext.entries()) {
-      FRAMES['nx-' + f.key] = {
-        name: f.label,
-        category: f.category,
+    for (const t of FramesNext.entries()) {
+      FRAMES['nx-' + t.key] = {
+        name: t.label,
+        category: t.category,
         framesNext: true,
         draw: function (ctx, w, h) {
-          // live preview: frame PNG contain-fit (async; canvas persists so it lands)
-          const my = ++FramesNext._pvToken;
           const layout = (typeof app !== 'undefined' && app.currentLayout) ? app.currentLayout : 'strip-4';
           const ghost = (typeof app !== 'undefined' && app.frameSheetOpen) ? 0.45 : 1;
-          FramesNext.previewInto(ctx.canvas, f.key, layout, ghost)
-            .then(ok => { if (!ok && my === FramesNext._pvToken) {
-              ctx.fillStyle = '#F2EBE0'; ctx.fillRect(0, 0, w, h);
-            } })
-            .catch(() => {});
+          FramesNext.previewInto(ctx.canvas, t.key, layout, ghost).catch(() => {});
         },
       };
     }
-    // rebuild chips/thumbs if app already built them (app is a top-level const in app.js)
     if (typeof app !== 'undefined' && typeof app.buildFrameChips === 'function') {
       try { app.buildFrameChips(); } catch (e) {}
     }
   }
   function tryNow() {
-    if (FramesNext.manifest) { doRegister(); return; }
+    if (FramesNext.tpl) { doRegister(); return; }
     if (performance.now() - t0 > maxWait) return;
     setTimeout(tryNow, 250);
   }

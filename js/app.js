@@ -341,16 +341,28 @@ const app = {
     
     ctx.clearRect(0, 0, w, h);
     
-    // Draw current frame at semi-transparent during browse, full when locked
+    // LIVE IN-FRAME PREVIEW: camera shows through the frame's photo slots
     const frameDef = FRAMES[this.currentFrame];
-    if (frameDef && this.currentFrame !== 'none') {
+    if (frameDef && frameDef.framesNext) {
       ctx.save();
-      if (this.frameSheetOpen) {
-        ctx.globalAlpha = 0.5; // ghost mode while browsing
-      }
+      if (this.frameSheetOpen) ctx.globalAlpha = 0.55;
+      try {
+        FramesNext.drawLivePreview(ctx, w, h, this.currentFrame.replace('nx-',''), this.currentLayout,
+                                   document.getElementById('local-video'), this._fmtPrevDate());
+      } catch (e) { /* preview is best-effort */ }
+      ctx.restore();
+    } else if (frameDef && this.currentFrame !== 'none') {
+      ctx.save();
+      if (this.frameSheetOpen) ctx.globalAlpha = 0.5;
       frameDef.draw(ctx, w, h);
       ctx.restore();
     }
+  },
+
+  _fmtPrevDate() {
+    const d = new Date();
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
   },
   
   updateFrameOverlay() {
@@ -717,8 +729,8 @@ const app = {
         ctx.filter = 'none';
         const frameDef = FRAMES[this.currentFrame];
         if (frameDef && frameDef.framesNext) {
-          // frames-next: full composite render (resizes canvas, injects photos+date)
-          FramesNext.renderToCanvas(frameDef.key ? frameDef.key : this.currentFrame.replace('nx-',''),
+          // frames-next v2: pre-rendered template + canvas compositing (iOS-safe)
+          FramesNext.renderToCanvas(this.currentFrame.replace('nx-',''),
             this.currentLayout, this.canvas, this.multiShots)
             .then(ok => {
               this.capturedImage = this.canvas.toDataURL('image/jpeg', 0.92);

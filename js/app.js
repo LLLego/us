@@ -377,6 +377,7 @@ const app = {
       requestAnimationFrame(() => {
         sheet.style.transform = 'translateY(0)';
       });
+      this.setFrameCategory('casts');
       this.buildFrameThumbnails();
     }
     this.drawFrameOverlay();
@@ -387,7 +388,10 @@ const app = {
     if (!container) return;
     container.innerHTML = '';
     
-    for (const [key, frame] of Object.entries(FRAMES)) {
+    // frames-next first, old frames after
+    const ordered = Object.entries(FRAMES).sort((a, b) =>
+      (b[1].framesNext ? 1 : 0) - (a[1].framesNext ? 1 : 0));
+    for (const [key, frame] of ordered) {
       // Category filter
       if (this.frameCategory !== 'all' && frame.category && frame.category !== this.frameCategory) continue;
       
@@ -435,6 +439,13 @@ const app = {
         thumb.appendChild(mini);
       }
       
+      // NEW badge for frames-next designs
+      if (frame.framesNext) {
+        const badge = document.createElement('div');
+        badge.textContent = 'NEW';
+        badge.style.cssText = 'position:absolute;top:-7px;right:-8px;background:var(--accent);color:var(--bg);font-family:Space Mono,monospace;font-size:8px;font-weight:700;padding:2px 5px;letter-spacing:0.05em;z-index:2';
+        thumb.appendChild(badge);
+      }
       // Name label
       const label = document.createElement('div');
       label.textContent = frame.name;
@@ -453,17 +464,19 @@ const app = {
     
     // Category tab handlers
     document.querySelectorAll('.frame-cat-btn').forEach(btn => {
-      btn.onclick = () => {
-        this.frameCategory = btn.dataset.cat;
-        document.querySelectorAll('.frame-cat-btn').forEach(b => {
-          b.style.background = 'var(--bg)';
-          b.style.color = 'var(--fg)';
-        });
-        btn.style.background = 'var(--fg)';
-        btn.style.color = 'var(--bg)';
-        this.buildFrameThumbnails();
-      };
+      btn.onclick = () => this.setFrameCategory(btn.dataset.cat);
     });
+  },
+
+  setFrameCategory(cat) {
+    this.frameCategory = cat;
+    document.querySelectorAll('.frame-cat-btn').forEach(b => {
+      const active = b.dataset.cat === cat;
+      b.style.background = active ? 'var(--fg)' : 'var(--bg)';
+      b.style.color = active ? 'var(--bg)' : 'var(--fg)';
+      b.classList.toggle('active', active);
+    });
+    this.buildFrameThumbnails();
   },
 
   // ===== LAYOUTS UI =====

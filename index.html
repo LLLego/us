@@ -148,8 +148,10 @@ Your camera. Your filters. Your frames. Take a photo, save it, send it.
 <!-- Drag handle -->
 <div style="width:40px;height:4px;background:var(--accent);margin:8px auto;border-radius:2px;flex-shrink:0"></div>
 <!-- Category tabs -->
-<div style="display:flex;gap:8px;padding:8px 16px;flex-shrink:0" id="frame-categories">
-<button class="frame-cat-btn active" data-cat="all" style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;padding:6px 12px;border:1.5px solid var(--fg);background:var(--fg);color:var(--bg);cursor:pointer">All</button>
+<div style="display:flex;gap:8px;padding:8px 16px;flex-shrink:0;overflow-x:auto" id="frame-categories">
+<button class="frame-cat-btn active" data-cat="casts" style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;padding:6px 12px;border:1.5px solid var(--fg);background:var(--fg);color:var(--bg);cursor:pointer">Characters</button>
+<button class="frame-cat-btn" data-cat="craft" style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;padding:6px 12px;border:1.5px solid var(--fg);background:var(--bg);color:var(--fg);cursor:pointer">Craft</button>
+<button class="frame-cat-btn" data-cat="all" style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;padding:6px 12px;border:1.5px solid var(--fg);background:var(--bg);color:var(--fg);cursor:pointer">All</button>
 <button class="frame-cat-btn" data-cat="clean" style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;padding:6px 12px;border:1.5px solid var(--fg);background:var(--bg);color:var(--fg);cursor:pointer">Clean</button>
 <button class="frame-cat-btn" data-cat="fun" style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;padding:6px 12px;border:1.5px solid var(--fg);background:var(--bg);color:var(--fg);cursor:pointer">Fun</button>
 <button class="frame-cat-btn" data-cat="themed" style="font-family:'Space Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;padding:6px 12px;border:1.5px solid var(--fg);background:var(--bg);color:var(--fg);cursor:pointer">Themed</button>

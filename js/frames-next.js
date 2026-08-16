@@ -109,7 +109,8 @@ const FramesNext = {
   // thumbnail for the picker sheet (static PNG from build)
   thumbURL(key, appLayout) {
     const lk = this.layoutKey(appLayout);
-    return lk ? `thumbs/${key}-${lk}.png` : null;
+    const id = key.replace(/^nx-/, '');
+    return lk ? `thumbs/${id}-${lk}.png` : null;
   },
 };
 

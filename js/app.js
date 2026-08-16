@@ -587,7 +587,7 @@ const app = {
         // Single shot
         await this.countdown(3);
         if (this.multiShotCancelled) return;
-        this.composite();
+        await this.composite();
       }
 
       this.showReveal();
@@ -782,7 +782,7 @@ const app = {
     if (frameDef && frameDef.framesNext) {
       const self = this;
       const snap = this.canvas.toDataURL('image/jpeg', 0.92);
-      FramesNext.renderToCanvas(this.currentFrame.replace('nx-',''), this.currentLayout, this.canvas, [snap])
+      return FramesNext.renderToCanvas(this.currentFrame.replace('nx-',''), this.currentLayout, this.canvas, [snap])
         .then(() => {
           self.capturedImage = self.canvas.toDataURL('image/jpeg', 0.92);
         })
@@ -790,7 +790,6 @@ const app = {
           console.warn('[frames-next] render failed', e);
           self.capturedImage = self.canvas.toDataURL('image/jpeg', 0.92);
         });
-      return;
     }
     if (frameDef) frameDef.draw(ctx, W, H);
 

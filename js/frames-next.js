@@ -106,6 +106,32 @@ const FramesNext = {
     return true;
   },
 
+  // live stage preview: draws the frame PNG contain-fit into the overlay canvas
+  _imgCache: new Map(),
+  _pvToken: 0,
+  async previewInto(canvas, key, appLayout, ghost) {
+    const url = this.thumbURL(key, appLayout);
+    if (!url) return false;
+    let img = this._imgCache.get(url);
+    if (!img) {
+      img = await new Promise((res, rej) => {
+        const i = new Image();
+        i.onload = () => res(i);
+        i.onerror = rej;
+        i.src = url;
+      });
+      this._imgCache.set(url, img);
+    }
+    const ctx = canvas.getContext('2d');
+    const s = Math.min(canvas.width / img.width, canvas.height / img.height);
+    const w = img.width * s, h = img.height * s;
+    ctx.save();
+    ctx.globalAlpha = ghost ? 0.45 : 1;
+    ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+    ctx.restore();
+    return true;
+  },
+
   // thumbnail for the picker sheet (static PNG from build)
   thumbURL(key, appLayout) {
     const lk = this.layoutKey(appLayout);
@@ -128,19 +154,21 @@ FramesNext.init();
         category: f.category,
         framesNext: true,
         draw: function (ctx, w, h) {
-          // canvas-draw preview fallback: tinted mat + label (async real render handled by app hooks)
-          ctx.fillStyle = '#F2EBE0';
-          ctx.fillRect(0, 0, w, h);
-          ctx.fillStyle = '#4A2F1F';
-          ctx.font = `700 ${Math.max(10, Math.round(w * 0.05))}px 'Space Mono', monospace`;
-          ctx.textAlign = 'center';
-          ctx.fillText(f.label, w / 2, h / 2);
+          // live preview: frame PNG contain-fit (async; canvas persists so it lands)
+          const my = ++FramesNext._pvToken;
+          const layout = (typeof app !== 'undefined' && app.currentLayout) ? app.currentLayout : 'strip-4';
+          const ghost = (typeof app !== 'undefined' && app.frameSheetOpen) ? 0.45 : 1;
+          FramesNext.previewInto(ctx.canvas, f.key, layout, ghost)
+            .then(ok => { if (!ok && my === FramesNext._pvToken) {
+              ctx.fillStyle = '#F2EBE0'; ctx.fillRect(0, 0, w, h);
+            } })
+            .catch(() => {});
         },
       };
     }
-    // rebuild chips/thumbs if app already built them
-    if (window.App && typeof App.buildFrameChips === 'function') {
-      try { App.buildFrameChips(); } catch (e) {}
+    // rebuild chips/thumbs if app already built them (app is a top-level const in app.js)
+    if (typeof app !== 'undefined' && typeof app.buildFrameChips === 'function') {
+      try { app.buildFrameChips(); } catch (e) {}
     }
   }
   function tryNow() {

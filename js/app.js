@@ -226,7 +226,7 @@ const app = {
     const v = document.getElementById('local-video');
     if (v) v.style.transform = this.mirrored ? 'scaleX(-1)' : 'scaleX(1)';
     const btn = document.getElementById('mirror-btn');
-    if (btn) btn.textContent = this.mirrored ? 'MIRROR: ON' : 'MIRROR: OFF';
+    if (btn) { btn.textContent = this.mirrored ? 'MIRROR: ON' : 'MIRROR: OFF'; btn.classList.toggle('active', this.mirrored); }
     // keep the captured photos consistent with what you see
     this.mirrorCaptures = this.mirrored;
   },
@@ -388,7 +388,8 @@ const app = {
       if (this.frameSheetOpen) ctx.globalAlpha = 0.55;
       try {
         FramesNext.drawLivePreview(ctx, w, h, this.currentFrame.replace('nx-',''), this.currentLayout,
-                                   document.getElementById('local-video'), this._fmtPrevDate());
+                                   document.getElementById('local-video'), this._fmtPrevDate(),
+                                   this.multiShots || [], (this.multiShots || []).length);
       } catch (e) { /* preview is best-effort */ }
       ctx.restore();
     } else if (frameDef && this.currentFrame !== 'none') {

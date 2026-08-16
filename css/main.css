@@ -222,6 +222,23 @@ body::before {
 .status-dot.connected { background: var(--success); }
 .status-dot.connecting { background: var(--accent); animation: blink 1s infinite; }
 
+#mirror-btn, .mirror-btn {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 6px 12px;
+  border: 2px solid var(--fg);
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+#mirror-btn.active { background: var(--fg); color: var(--bg); }
+#mirror-btn.active { background: var(--fg); color: var(--bg); }
+
 .exit-btn {
   background: none;
   border: 2px solid var(--fg);

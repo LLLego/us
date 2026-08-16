@@ -157,7 +157,7 @@ const FramesNext = {
   },
 
   // scaled live preview: template + live video in slots + live date
-  async drawLivePreview(ctx, w, h, key, appLayout, videoEl, dateStr) {
+  async drawLivePreview(ctx, w, h, key, appLayout, videoEl, dateStr, frozenPhotos, liveIndex) {
     const t = this.get(key);
     const lk = this.layoutKey(appLayout);
     if (!t || !lk) return;
@@ -172,27 +172,77 @@ const FramesNext = {
     ctx.translate(ox, oy);
     ctx.scale(s, s);
 
-    // slots: live video cover-fit (only if playing)
+    // pre-decode frozen photos so each frame draws without flicker
+    const frozen = [];
+    if (Array.isArray(frozenPhotos)) {
+      for (const p of frozenPhotos) {
+        try { frozen.push(await this._png(p)); } catch (e) { frozen.push(null); }
+      }
+    }
+
+    // slots: taken slots FREEZE (photo + check), current is LIVE video, rest dim
     const vidOk = videoEl && videoEl.readyState >= 2 && videoEl.videoWidth > 0;
-    for (const sl of spec.slots) {
+    spec.slots.forEach((sl, i) => {
+      const isTaken = i < frozen.length;
+      const isLive = !isTaken && i === liveIndex;
       ctx.save();
       const r = Math.min(sl.r || 0, sl.w / 2, sl.h / 2);
       ctx.beginPath();
       ctx.roundRect ? ctx.roundRect(sl.x, sl.y, sl.w, sl.h, r) : ctx.rect(sl.x, sl.y, sl.w, sl.h);
       ctx.clip();
-      ctx.fillStyle = 'rgba(24,20,16,0.25)'; // dim placeholder until camera ready
-      ctx.fillRect(sl.x, sl.y, sl.w, sl.h);
-      if (vidOk) {
-        const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
-        // un-mirror selfie view
-        ctx.translate(sl.x + sl.w, 0);
-        ctx.scale(-1, 1);
-        const sc = Math.max(sl.w / vw, sl.h / vh);
-        const dw = vw * sc, dh = vh * sc;
-        ctx.drawImage(videoEl, (sl.w - dw) / 2, sl.y + (sl.h - dh) / 2, dw, dh);
+      if (isTaken) {
+        const img = frozen[i];
+        if (img) {
+          const sc = Math.max(sl.w / img.width, sl.h / img.height);
+          const dw = img.width * sc, dh = img.height * sc;
+          ctx.drawImage(img, sl.x + (sl.w - dw) / 2, sl.y + (sl.h - dh) / 2, dw, dh);
+        }
+        // check badge
+        const cb = Math.min(sl.w, sl.h) * 0.16;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(sl.x + sl.w - cb * 0.9, sl.y + cb * 0.9, cb / 2, 0, Math.PI * 2);
+        ctx.fillStyle = '#181410';
+        ctx.fill();
+        ctx.strokeStyle = '#FDFBF7';
+        ctx.lineWidth = Math.max(2, cb * 0.09);
+        ctx.stroke();
+        ctx.strokeStyle = '#FDFBF7';
+        ctx.lineWidth = Math.max(2, cb * 0.11);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        const cx = sl.x + sl.w - cb * 0.9, cy = sl.y + cb * 0.9;
+        ctx.beginPath();
+        ctx.moveTo(cx - cb * 0.18, cy);
+        ctx.lineTo(cx - cb * 0.04, cy + cb * 0.15);
+        ctx.lineTo(cx + cb * 0.22, cy - cb * 0.14);
+        ctx.stroke();
+        ctx.restore();
+      } else if (isLive || liveIndex === -1) {
+        // live video in this slot
+        ctx.fillStyle = 'rgba(24,20,16,0.25)';
+        ctx.fillRect(sl.x, sl.y, sl.w, sl.h);
+        if (vidOk) {
+          const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+          ctx.translate(sl.x + sl.w, 0);
+          ctx.scale(-1, 1);
+          const sc = Math.max(sl.w / vw, sl.h / vh);
+          const dw = vw * sc, dh = vh * sc;
+          ctx.drawImage(videoEl, (sl.w - dw) / 2, sl.y + (sl.h - dh) / 2, dw, dh);
+        }
+        if (isLive) {
+          // red LIVE border
+          ctx.strokeStyle = '#D64045';
+          ctx.lineWidth = Math.max(3, sl.w * 0.014);
+          ctx.strokeRect(sl.x + ctx.lineWidth / 2, sl.y + ctx.lineWidth / 2, sl.w - ctx.lineWidth, sl.h - ctx.lineWidth);
+        }
+      } else {
+        // dimmed upcoming slot
+        ctx.fillStyle = 'rgba(24,20,16,0.55)';
+        ctx.fillRect(sl.x, sl.y, sl.w, sl.h);
       }
       ctx.restore();
-    }
+    });
 
     // template on top
     ctx.drawImage(tpl, 0, 0);

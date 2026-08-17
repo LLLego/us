@@ -1,22 +1,124 @@
-:root {
-  --bg: #F2EBE0;
-  --fg: #181410;
-  --accent: #D64045;
-  --accent-light: #e85a5f;
-  --accent-soft: #E8E3D6;
+:root, :root[data-theme="studio"] {
+  --bg: #FBF6EC;           /* warm cream paper (court: #FBF6EC) */
+  --fg: #2A1F1A;           /* warm ink, never pure black */
+  --accent: #E8636A;       /* the single coral */
+  --accent-light: #f07f85;
+  --accent-soft: #F4E7D8;
   --success: #3A6B5C;
   --paper: #FDFBF7;
   --s: 8px;
-  --shadow-hard: 8px 8px 0 var(--fg);
+  --shadow-hard: 6px 6px 0 var(--fg);
   --shadow-soft: 4px 4px 0 var(--fg);
   --border: 3px solid var(--fg);
+  --pill: 999px;
   --font-display: 'Fraunces', Georgia, serif;
   --font-body: 'Inter', system-ui, sans-serif;
   --font-mono: 'Space Mono', 'Courier New', monospace;
   --font-hand: 'Caveat', cursive;
 }
 
+/* ---- THEME: machine (vending) — pastel chunky ---- */
+:root[data-theme="machine"] {
+  --bg: #FDEFF3;
+  --fg: #2B2233;
+  --accent: #FF7FA8;
+  --accent-light: #ff97bb;
+  --accent-soft: #FFE3EC;
+  --paper: #FFFFFF;
+  --shadow-hard: 5px 6px 0 var(--fg);
+  --shadow-soft: 4px 5px 0 var(--fg);
+}
+
+/* ---- THEME: camera (film) — black chrome ---- */
+:root[data-theme="camera"] {
+  --bg: #262019;
+  --fg: #F2ECE0;
+  --accent: #E04A3A;
+  --accent-light: #ea6557;
+  --accent-soft: #38302A;
+  --paper: #38302A;
+  --success: #7FBF9E;
+  --shadow-hard: 0 5px 0 #14100C;
+  --shadow-soft: 0 4px 0 #14100C;
+}
+/* dark-theme contrast fixes: inputs + dim text stay legible on chrome */
+:root[data-theme="camera"] input,
+:root[data-theme="camera"] .room-input {
+  background: #1D1812 !important;
+  color: #F2ECE0 !important;
+  border-color: #F2ECE0 !important;
+}
+:root[data-theme="camera"] input::placeholder { color: rgba(242,236,224,.55) !important; }
+:root[data-theme="camera"] .landing-meta,
+:root[data-theme="camera"] .hero-sub,
+:root[data-theme="camera"] [style*="opacity:0.5"],
+:root[data-theme="camera"] [style*="opacity: 0.5"] { color: rgba(242,236,224,.72) !important; }
+:root[data-theme="camera"] #landing-code-input { color: #F2ECE0 !important; background: #1D1812 !important; }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===== COURT RATIFIED SURFACE ===== */
+.btn, .btn-primary, button.pill {
+  border-radius: var(--pill) !important;
+}
+.frame-chip, .filter-chip, .layout-chip {
+  border-radius: var(--pill) !important;
+  border-width: 2px;
+}
+
+/* theme switcher — small corner paint icon */
+#theme-btn {
+  position: fixed;
+  right: 14px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  z-index: 90;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--fg);
+  background: var(--paper);
+  color: var(--fg);
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+}
+:root[data-theme="camera"] #theme-btn { background: #38302A; }
+
+#theme-menu {
+  position: fixed;
+  right: 14px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 66px);
+  z-index: 91;
+  background: var(--paper);
+  border: 2px solid var(--fg);
+  border-radius: 18px;
+  box-shadow: var(--shadow-hard);
+  padding: 8px;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+}
+#theme-menu.open { display: flex; }
+#theme-menu button {
+  border: 2px solid transparent;
+  background: transparent;
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  padding: 10px 16px;
+  border-radius: var(--pill);
+  cursor: pointer;
+  text-align: left;
+}
+#theme-menu button.active { background: var(--accent); color: #fff; border-color: var(--fg); }
+
+/* develop-wipe reveal: the strip develops cream->photo on show */
+@keyframes developWipe { from { filter: sepia(1) brightness(1.6) saturate(0); } to { filter: none; } }
+.develop-wipe { animation: developWipe 1.2s ease-out both; }
+
+/* frozen-slot pop */
+@keyframes slotPop { 0% { transform: scale(1); } 40% { transform: scale(1.025); } 100% { transform: scale(1); } }
+video-container.pop, .video-container.pop { animation: slotPop 0.35s ease-out; }
 
 html, body {
   background: var(--bg);

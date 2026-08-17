@@ -35,6 +35,9 @@ const app = {
     this.ctx = this.canvas.getContext('2d');
     this.loadGallery();
     this.buildFilterChips();
+    this.theme = 'studio';
+    try { this.theme = localStorage.getItem('us_theme') || 'studio'; } catch(e) {}
+    this.setTheme(this.theme);
     this.buildFrameChips();
     this.buildLayoutChips();
     this.loadGalleryPreview();
@@ -97,8 +100,27 @@ const app = {
     if (el) el.classList.add('active');
   },
 
+  // ===== THEMES (court-ratified skins) =====
+  toggleThemeMenu() {
+    const m = document.getElementById('theme-menu');
+    if (m) m.classList.toggle('open');
+    document.querySelectorAll('#theme-menu button').forEach(b => {
+      b.classList.toggle('active', b.dataset.themeSet === this.theme);
+    });
+  },
+
+  setTheme(t) {
+    this.theme = t;
+    try { localStorage.setItem('us_theme', t); } catch(e) {}
+    document.documentElement.setAttribute('data-theme', t);
+    const m = document.getElementById('theme-menu');
+    if (m) m.classList.remove('open');
+  },
+
   goHome() {
     this.hideRoomPill();
+    const tm = document.getElementById('theme-menu');
+    if (tm) tm.classList.remove('open');
     this.stopFramePreview();
     const sheet = document.getElementById('frame-sheet');
     if (sheet) sheet.style.display = 'none';
@@ -655,6 +677,10 @@ const app = {
           void numEl.offsetWidth; // force reflow
           numEl.style.animation = 'fadeInUp 0.5s ease-out';
           this.playTickSound();
+          // SHARED VOICE: broadcast each tick so both phones breathe together
+          if (this.mode === 'together' && this.dataConnection && this.dataConnection.open && this.isHost) {
+            try { this.dataConnection.send({ action: 'sharedTick', n: count }); } catch(e) {}
+          }
           count--;
           setTimeout(tick, 1000);
         } else {
@@ -992,6 +1018,8 @@ const app = {
 
   // ===== REVEAL =====
   showReveal() {
+    const pol = document.getElementById('reveal-polaroid');
+    if (pol) { pol.classList.remove('develop-wipe'); void pol.offsetWidth; pol.classList.add('develop-wipe'); }
     if (!this.capturedImage) {
       console.error('No captured image to show');
       return;
@@ -1324,7 +1352,9 @@ const app = {
 
     conn.on('data', (data) => {
       if (!data) return;
-      if (data.action === 'pairShot' && typeof data.index === 'number' && data.data) {
+      if (data.action === 'sharedTick') {
+        this.playTickSound(); // two rooms, one breath
+      } else if (data.action === 'pairShot' && typeof data.index === 'number' && data.data) {
         this.pairPartnerShots = this.pairPartnerShots || [];
         this.pairPartnerShots[data.index] = data.data;
       } else if (data.action === 'capture') {

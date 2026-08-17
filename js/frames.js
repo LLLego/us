@@ -7,6 +7,8 @@ const LAYOUTS = {
   single: { name: 'Single', shots: 1, description: 'One photo' },
   'strip-4': { name: 'Strip 1×4', shots: 4, description: 'Classic vertical strip' },
   'grid-2x2': { name: 'Grid 2×2', shots: 4, description: 'Four photos in a square' },
+  'duo-strip': { name: 'Duo Strip', shots: 4, description: 'Wide two-face strip', duoOnly: true },
+  'duo-grid': { name: 'Duo Wide', shots: 2, description: 'Two wide two-face rows', duoOnly: true },
 };
 
 // ===== HELPER FUNCTIONS =====

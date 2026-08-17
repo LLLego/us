@@ -601,7 +601,8 @@ const app = {
     if (!row) return;
     row.innerHTML = '';
     for (const [key, l] of Object.entries(LAYOUTS)) {
-      const chip = document.createElement('button');
+          if (l.duoOnly && this.mode !== 'together') continue;
+          const chip = document.createElement('button');
       chip.className = 'frame-chip layout-chip' + (key === this.currentLayout ? ' active' : '');
       chip.textContent = l.name;
       chip.dataset.layout = key;
@@ -614,6 +615,8 @@ const app = {
     if (!FramesNext.supports(key) && FRAMES[this.currentFrame] && FRAMES[this.currentFrame].framesNext) {
       key = 'strip-4'; // unsupported layout with an nx frame: snap to a supported one
     }
+    const ddef = LAYOUTS[key];
+    if (ddef && ddef.duoOnly && this.mode !== 'together') key = 'strip-4';
     this.currentLayout = key;
     // share the pick with the partner so both composites match
     if (this.dataConnection && this.dataConnection.open) {
@@ -738,9 +741,10 @@ const app = {
     const hasRemote = this.mode === 'together' && remoteVideo && remoteVideo.srcObject;
 
     const tmp = document.createElement('canvas');
-    // Portrait aspect ratio 4:5 (1080×1350) for each shot
-    const W = 1080;
-    const H = 1350;
+    // Portrait 4:5 normally; DUO layouts capture wide 16:9 so two faces fit side-by-side
+    const duoWide = this.currentLayout === 'duo-strip' || this.currentLayout === 'duo-grid';
+    const W = duoWide ? 1440 : 1080;
+    const H = duoWide ? 810 : 1350;
     tmp.width = W;
     tmp.height = H;
     const tctx = tmp.getContext('2d');

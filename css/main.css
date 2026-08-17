@@ -496,7 +496,11 @@ body::before {
   overflow-x: auto;
   padding-bottom: calc(var(--s));
   scrollbar-width: thin;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
 }
+/* last chip never clips against the edge */
+.filter-row > :last-child, .frame-row > :last-child { margin-right: calc(var(--s) * 2); }
 .filter-row::-webkit-scrollbar, .frame-row::-webkit-scrollbar { height: 4px; }
 .filter-row::-webkit-scrollbar-thumb, .frame-row::-webkit-scrollbar-thumb { background: var(--fg); }
 

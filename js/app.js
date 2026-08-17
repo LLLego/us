@@ -15,7 +15,7 @@ const app = {
 
   // Current settings
   currentFilter: 'none',
-  currentFrame: 'none',
+  currentFrame: 'nx-pooh',
   currentLayout: 'single',
   multiShots: [],        // accumulated captures for multi-shot layouts
   multiShotInProgress: false,
@@ -369,6 +369,27 @@ const app = {
     }
   },
 
+  showFiltersInSheet() {
+    const ft = document.getElementById('filter-thumbnails');
+    const th = document.getElementById('frame-thumbnails');
+    if (!ft) return;
+    th.style.display = 'none';
+    ft.style.display = 'flex';
+    ft.innerHTML = '';
+    document.querySelectorAll('#frame-categories .frame-cat-btn').forEach(b => {
+      b.style.background = b.id === 'filters-tab' ? 'var(--fg)' : 'var(--bg)';
+      b.style.color = b.id === 'filters-tab' ? 'var(--bg)' : 'var(--fg)';
+    });
+    for (const [key, f] of Object.entries(FILTERS)) {
+      const chip = document.createElement('button');
+      chip.className = 'frame-chip';
+      chip.textContent = f.name || key;
+      if (key === this.currentFilter) chip.classList.add('active');
+      chip.onclick = () => { this.setFilter(key); this.showFiltersInSheet(); };
+      ft.appendChild(chip);
+    }
+  },
+
   setFrame(key) {
     this.currentFrame = key;
     this.applyPreviewAspect();
@@ -607,6 +628,12 @@ const app = {
   },
 
   setFrameCategory(cat) {
+    const ft = document.getElementById('filter-thumbnails');
+    const th = document.getElementById('frame-thumbnails');
+    if (ft && th) { ft.style.display = 'none'; th.style.display = 'flex'; }
+    document.querySelectorAll('#frame-categories .frame-cat-btn').forEach(b => {
+      if (b.id === 'filters-tab') { b.style.background = 'var(--bg)'; b.style.color = 'var(--fg)'; }
+    });
     this.frameCategory = cat;
     document.querySelectorAll('.frame-cat-btn').forEach(b => {
       const active = b.dataset.cat === cat;

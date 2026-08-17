@@ -9,6 +9,7 @@ const LAYOUTS = {
   'grid-2x2': { name: 'Grid 2×2', shots: 4, description: 'Four photos in a square' },
   'duo-strip': { name: 'Duo Strip', shots: 4, description: 'Wide two-face strip', duoOnly: true },
   'duo-grid': { name: 'Duo Wide', shots: 2, description: 'Two wide two-face rows', duoOnly: true },
+  'pair': { name: 'Pair Strip', shots: 4, description: 'Two strips side by side — you each take your side', duoOnly: true, pair: true },
 };
 
 // ===== HELPER FUNCTIONS =====

@@ -28,7 +28,7 @@ const FramesNext = {
     if (appLayout === 'strip-4') return 'strip';
     if (appLayout === 'grid-2x2') return 'grid';
     if (appLayout === 'single') return 'single';
-    if (appLayout === 'duo-strip' || appLayout === 'duo-grid') return appLayout;
+    if (appLayout === 'duo-strip' || appLayout === 'duo-grid' || appLayout === 'pair') return appLayout;
     return null;
   },
 

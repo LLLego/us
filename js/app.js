@@ -693,6 +693,11 @@ const app = {
         const shotData = this.captureSingleFrame();
         this.multiShots.push(shotData);
 
+        // PAIR mode: share every shot with the partner so both can build the full strip
+        if (this.currentLayout === 'pair' && this.dataConnection && this.dataConnection.open) {
+          try { this.dataConnection.send({ action: 'pairShot', index: this.multiShots.length - 1, data: shotData }); } catch(e) {}
+        }
+
         const shotNum = this.multiShots.length;
 
         if (shotNum < layout.shots) {
@@ -709,6 +714,10 @@ const app = {
         }
 
         // All shots taken — composite them (await the async result!)
+        if (this.currentLayout === 'pair') {
+          await this.finalizePairCapture();
+          return; // finalizePairCapture drives its own reveal
+        }
         await this.compositeMultiShot();
       } else {
         // Single shot
@@ -756,7 +765,10 @@ const app = {
     tctx.filter = filterDef ? filterDef.canvas : 'none';
 
     const doMirror = this.mirrorCaptures;
-    if (hasRemote) {
+    if (this.currentLayout === 'pair') {
+      // PAIR: each person shoots their OWN column — local camera only, full frame
+      this.drawCover(tctx, localVideo, 0, 0, W, H);
+    } else if (hasRemote) {
       const gutter = 12;
       const halfW = (W - gutter) / 2;
       if (doMirror) { tctx.save(); tctx.translate(halfW, 0); tctx.scale(-1, 1); }
@@ -774,6 +786,29 @@ const app = {
   },
 
   // Returns a Promise that resolves when compositing is complete
+  // PAIR mode: wait for partner's 4 shots, merge into column order, composite, reveal BOTH sides
+  async finalizePairCapture() {
+    const mine = [...this.multiShots];
+    this.pairPartnerShots = this.pairPartnerShots || [];
+    // wait up to 12s for the partner's shots to finish arriving
+    for (let i = 0; i < 24 && this.pairPartnerShots.length < 4; i++) {
+      await new Promise(r => setTimeout(r, 500));
+    }
+    const theirs = this.pairPartnerShots.slice(0, 4);
+    // host = LEFT column, guest = RIGHT column (template slot order is L0..L3 then R0..R3)
+    const isHost = this.isHost;
+    const ordered = isHost
+      ? [...mine, ...theirs, ...Array(Math.max(0, 8 - mine.length - theirs.length)).fill(mine[mine.length-1] || theirs[0])]
+      : [...theirs, ...mine, ...Array(Math.max(0, 8 - mine.length - theirs.length)).fill(mine[mine.length-1] || theirs[0])];
+    this.multiShots = ordered.slice(0, 8);
+    try { await this.compositeMultiShot(); } catch (e) { console.warn('pair composite failed', e); }
+    this.showReveal();
+    this.multiShots = [];
+    this.multiShotInProgress = false;
+    this.pairPartnerShots = [];
+    document.getElementById('shutter-btn').disabled = false;
+  },
+
   compositeMultiShot() {
     const layout = LAYOUTS[this.currentLayout];
     const shots = this.multiShots;
@@ -1289,7 +1324,10 @@ const app = {
 
     conn.on('data', (data) => {
       if (!data) return;
-      if (data.action === 'capture') {
+      if (data.action === 'pairShot' && typeof data.index === 'number' && data.data) {
+        this.pairPartnerShots = this.pairPartnerShots || [];
+        this.pairPartnerShots[data.index] = data.data;
+      } else if (data.action === 'capture') {
         this.handleSyncedCapture(data.captureTime, data.frame, data.layout);
       } else if (data.action === 'setFrame' && data.key) {
         if (data.key !== this.currentFrame) this.setFrame(data.key);

@@ -9,7 +9,8 @@
   --s: 8px;
   --shadow-hard: 6px 6px 0 var(--fg);
   --shadow-soft: 4px 4px 0 var(--fg);
-  --border: 3px solid var(--fg);
+  --border: 2.5px solid var(--fg);
+  --border-thin: 1.5px solid var(--fg);
   --pill: 999px;
   --font-display: 'Fraunces', Georgia, serif;
   --font-body: 'Inter', system-ui, sans-serif;
@@ -70,7 +71,7 @@
 #theme-btn {
   position: fixed;
   right: 14px;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  top: calc(env(safe-area-inset-top, 0px) + 70px);
   z-index: 90;
   width: 44px; height: 44px;
   border-radius: 50%;
@@ -86,7 +87,7 @@
 #theme-menu {
   position: fixed;
   right: 14px;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 66px);
+  top: calc(env(safe-area-inset-top, 0px) + 122px);
   z-index: 91;
   background: var(--paper);
   border: 2px solid var(--fg);
@@ -671,8 +672,10 @@ body::before {
     padding-bottom: calc(var(--s) * 3 + env(safe-area-inset-bottom));
   }
   #frame-sheet { max-height: 62vh !important; }
-  #frame-thumbnails .frame-thumb { width: 96px !important; height: 130px !important; }
+  #frame-thumbnails .frame-thumb { width: 108px !important; height: 146px !important; }
   #frame-thumbnails .frame-thumb canvas { width: 100% !important; height: 100% !important; }
+  #frame-thumbnails { padding-top: 12px !important; }
+  #frame-thumbnails .frame-thumb { border-radius: 10px; }
 }
 
 /* ===== MOBILE ===== */

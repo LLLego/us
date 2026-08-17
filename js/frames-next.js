@@ -248,9 +248,10 @@ const FramesNext = {
     // template on top
     ctx.drawImage(tpl, 0, 0);
 
-    // live date
+    // live date (drawn AFTER restoring any mirror transform, so text reads correctly)
     for (const d of (spec.dates || [])) {
       ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // never mirror text
       if (d.bg) {
         ctx.fillStyle = d.bg;
         ctx.beginPath();

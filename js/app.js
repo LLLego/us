@@ -597,17 +597,10 @@ const app = {
         thumb.appendChild(mini);
       }
       
-      // NEW badge for frames-next designs
-      if (frame.framesNext) {
-        const badge = document.createElement('div');
-        badge.textContent = 'NEW';
-        badge.style.cssText = 'position:absolute;top:-7px;right:-8px;background:var(--accent);color:var(--bg);font-family:Space Mono,monospace;font-size:8px;font-weight:700;padding:2px 5px;letter-spacing:0.05em;z-index:2';
-        thumb.appendChild(badge);
-      }
       // Name label
       const label = document.createElement('div');
       label.textContent = frame.name;
-      label.style.cssText = 'position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-family:Space Mono,monospace;font-size:7px;text-transform:uppercase;letter-spacing:0.05em;color:var(--fg);opacity:0.6;white-space:nowrap;overflow:hidden';
+      label.style.cssText = 'position:absolute;bottom:-19px;left:-10px;right:-10px;text-align:center;font-family:Space Mono,monospace;font-size:8px;text-transform:uppercase;letter-spacing:0.04em;color:var(--fg);opacity:0.65;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
       label.className = 'thumb-label';
       thumb.appendChild(label);
       

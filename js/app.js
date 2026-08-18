@@ -1,5 +1,6 @@
 // ===== us — Dual-Camera Photobooth =====
-// "two places, one frame."
+// "two places, one frame."  v3: sticker machine design system,
+// pick-your-best-four flow, monthly drop screen, 7 themes.
 
 const app = {
   // State
@@ -21,6 +22,13 @@ const app = {
   multiShotInProgress: false,
   multiShotCancelled: false,
 
+  // PICK-YOUR-BEST-FOUR (v3) — all captures this session, picked indices
+  sessionShots: [],
+  pickedIndices: [],
+
+  // MONTHLY DROP (v3) — the currently featured frame + meta
+  dropFrameKey: null,
+
   // Capture
   capturedImage: null,    // dataURL of last composited photo
   gallery: [],
@@ -35,12 +43,18 @@ const app = {
     this.ctx = this.canvas.getContext('2d');
     this.loadGallery();
     this.buildFilterChips();
-    this.theme = 'studio';
-    try { this.theme = localStorage.getItem('us_theme') || 'studio'; } catch(e) {}
+    this.theme = 'honey';
+    try {
+      const stored = localStorage.getItem('us_theme');
+      // Migrate old "studio" → "honey"; keep any other theme the user picked
+      this.theme = (stored === 'studio' || stored === 'machine' || stored === 'camera') ? 'honey' : (stored || 'honey');
+    } catch(e) {}
     this.setTheme(this.theme);
     this.buildFrameChips();
     this.buildLayoutChips();
     this.loadGalleryPreview();
+    this.computeMonthlyDrop();
+    this.maybeShowDropBadge();
 
     // Preload sticker images for frames
     if (typeof preloadStickers !== 'undefined') {
@@ -48,8 +62,7 @@ const app = {
     }
 
     // Both video halves start as "empty" — the camera start clears local,
-    // the remote stream arrival clears remote. Empty slots get a soft
-    // placeholder shimmer so the viewfinder doesn't look broken.
+    // the remote stream arrival clears remote.
     const localHalf = document.querySelector('.video-half.local');
     const remoteHalf = document.getElementById('remote-half');
     if (localHalf) localHalf.dataset.empty = '1';
@@ -70,12 +83,10 @@ const app = {
 
     let photos = [];
 
-    // Local photos
     if (this.gallery.length > 0) {
       photos = [...this.gallery.slice(0, 4)];
     }
 
-    // Cloud photos (dedup by url)
     if (typeof storage !== 'undefined') {
       try {
         const cloud = await storage.listPhotos();
@@ -93,9 +104,8 @@ const app = {
     photos.forEach(item => {
       const img = document.createElement('img');
       img.src = item.url;
-      img.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;border:1px solid var(--fg);box-shadow:2px 2px 0 var(--fg);cursor:pointer';
+      img.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;border:2px solid var(--ink);box-shadow:0 3px 0 var(--ink-sh);cursor:pointer';
       img.onclick = () => app.openGallery();
-      // Graceful fallback if image fails to load
       img.onerror = () => { img.style.display = 'none'; };
       preview.appendChild(img);
     });
@@ -108,7 +118,189 @@ const app = {
     if (el) el.classList.add('active');
   },
 
-  // ===== THEMES (court-ratified skins) =====
+  // ===== MONTHLY DROP (v3) =====
+  computeMonthlyDrop() {
+    // Deterministic: hash YYYY-MM over the nx frame keys
+    const allFrames = (typeof FRAMES !== 'undefined') ? Object.keys(FRAMES) : [];
+    const nxKeys = allFrames.filter(k => k.startsWith('nx-'));
+    if (nxKeys.length === 0) { this.dropFrameKey = 'nx-puccap'; return; }
+
+    const d = new Date();
+    const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    let h = 0;
+    for (let i = 0; i < ym.length; i++) {
+      h = ((h << 5) - h) + ym.charCodeAt(i);
+      h |= 0;
+    }
+    const idx = Math.abs(h) % nxKeys.length;
+    this.dropFrameKey = nxKeys[idx];
+    this.dropIndex = idx + 1;
+    this.dropTotal = nxKeys.length;
+  },
+
+  maybeShowDropBadge() {
+    try {
+      if (localStorage.getItem('us_drop_dismissed') === '1') return;
+    } catch(e) {}
+    const badge = document.getElementById('drop-badge');
+    if (badge) badge.style.display = 'inline-flex';
+  },
+
+  dismissDropBadge() {
+    try { localStorage.setItem('us_drop_dismissed', '1'); } catch(e) {}
+    const badge = document.getElementById('drop-badge');
+    if (badge) badge.style.display = 'none';
+  },
+
+  openDrop() {
+    if (!this.dropFrameKey) this.computeMonthlyDrop();
+    const img = document.getElementById('drop-img');
+    if (img && typeof FramesNext !== 'undefined') {
+      // Use the template strip png as the feature image — looks like a real strip
+      const url = FramesNext.thumbURL(this.dropFrameKey, this.currentLayout);
+      img.src = url || '';
+    }
+    // Counter
+    const c = document.getElementById('drop-counter');
+    if (c) {
+      const pad = n => String(n).padStart(2, '0');
+      c.textContent = `${pad(this.dropIndex)} / ${pad(this.dropTotal)}`;
+    }
+    // Meta: frame name + Caveat subtitle pulled from FRAMES
+    const fdef = (typeof FRAMES !== 'undefined') ? FRAMES[this.dropFrameKey] : null;
+    const nameEl = document.getElementById('drop-name');
+    const subEl = document.getElementById('drop-sub');
+    const floatBadge = document.getElementById('drop-badge-floating');
+    if (nameEl) nameEl.textContent = fdef ? fdef.name : 'this month';
+    if (subEl) subEl.textContent = 'a fresh frame for ' + (new Date()).toLocaleString('en-US', { month: 'long' }).toLowerCase();
+    if (floatBadge) {
+      const month = (new Date()).toLocaleString('en-US', { month: 'short' }).toUpperCase();
+      floatBadge.textContent = `NEW DROP · ${month} ✦`;
+    }
+    this.showScreen('drop-screen');
+  },
+
+  async useDropFrame() {
+    if (!this.dropFrameKey) this.computeMonthlyDrop();
+    this.currentFrame = this.dropFrameKey;
+    this.applyPreviewAspect();
+    this.updateFrameOverlay();
+    // Mirror pick to partner if connected
+    if (this.dataConnection && this.dataConnection.open) {
+      try { this.dataConnection.send({ action: 'setFrame', key: this.currentFrame }); } catch(e) {}
+    }
+    this.startSolo();
+  },
+
+  // ===== PICK-YOUR-BEST-FOUR (v3) =====
+  shotsNeededForLayout(layoutKey) {
+    // 2x the slots for multi-shot layouts, so the user can pick the best ones.
+    // Single-shot layouts skip the pick screen.
+    const layout = (typeof LAYOUTS !== 'undefined') ? LAYOUTS[layoutKey] : null;
+    if (!layout || layout.shots <= 1) return 1;
+    return layout.shots * 2;
+  },
+
+  openPickScreen() {
+    const grid = document.getElementById('pick-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    this.pickedIndices = [];
+    const total = (typeof LAYOUTS !== 'undefined') ? (LAYOUTS[this.currentLayout] ? LAYOUTS[this.currentLayout].shots : 4) : 4;
+
+    this.sessionShots.forEach((dataURL, idx) => {
+      const cell = document.createElement('div');
+      cell.className = 'pick-cell';
+      cell.dataset.idx = idx;
+      cell.innerHTML = `<img src="${dataURL}" alt="shot ${idx}"><div class="ord">${String(idx).padStart(2, '0')}</div>`;
+      cell.onclick = () => this.togglePick(idx);
+      grid.appendChild(cell);
+    });
+
+    this.updatePickCount(total);
+    this.showScreen('pick-screen');
+  },
+
+  togglePick(idx) {
+    const total = (typeof LAYOUTS !== 'undefined') ? (LAYOUTS[this.currentLayout] ? LAYOUTS[this.currentLayout].shots : 4) : 4;
+    const i = this.pickedIndices.indexOf(idx);
+    if (i >= 0) {
+      this.pickedIndices.splice(i, 1);
+    } else {
+      if (this.pickedIndices.length >= total) {
+        // tap on a non-picked cell while full → swap oldest for this one
+        this.pickedIndices.shift();
+      }
+      this.pickedIndices.push(idx);
+    }
+    // re-render cells
+    const cells = document.querySelectorAll('#pick-grid .pick-cell');
+    cells.forEach(c => {
+      const ci = parseInt(c.dataset.idx, 10);
+      const ord = this.pickedIndices.indexOf(ci);
+      const sel = ord >= 0;
+      c.classList.toggle('selected', sel);
+      // wipe + set new contents
+      c.innerHTML = `<img src="${this.sessionShots[ci]}" alt="shot ${ci}"><div class="ord">${String(ci).padStart(2, '0')}</div>`;
+      if (sel) {
+        const check = document.createElement('div');
+        check.className = 'check';
+        check.textContent = String(ord + 1);
+        c.appendChild(check);
+      }
+    });
+    this.updatePickCount(total);
+  },
+
+  updatePickCount(total) {
+    const n = this.pickedIndices.length;
+    const cnt = document.getElementById('pick-count');
+    if (cnt) {
+      cnt.textContent = `${n} / ${total}`;
+      cnt.classList.toggle('acc-bg', n > 0);
+    }
+    const print = document.getElementById('print-btn');
+    if (print) print.disabled = n !== total;
+  },
+
+  pickRetake() {
+    // v1 simplification: retake the WHOLE session (per-slot retake is a v2 feature)
+    this.multiShots = [];
+    this.sessionShots = [];
+    this.pickedIndices = [];
+    this.multiShotInProgress = false;
+    this.multiShotCancelled = false;
+    this.showScreen('stage');
+    setTimeout(() => this.initFrameOverlay(), 100);
+  },
+
+  async pickPrint() {
+    const total = (typeof LAYOUTS !== 'undefined') ? (LAYOUTS[this.currentLayout] ? LAYOUTS[this.currentLayout].shots : 4) : 4;
+    if (this.pickedIndices.length !== total) return;
+
+    // Order multiShots by tap order so the composite reflects picks left-to-right / top-to-bottom
+    const ordered = this.pickedIndices.map(i => this.sessionShots[i]);
+    this.multiShots = ordered;
+
+    if (this.currentLayout === 'pair') {
+      await this.finalizePairCapture();
+    } else {
+      await this.compositeMultiShot();
+      this.showReveal();
+      // duo: share our final strip with the partner so both reach the reveal
+      if (this.mode === 'together' && this.dataConnection && this.dataConnection.open) {
+        try { this.dataConnection.send({ action: 'finalStrip', data: this.capturedImage }); } catch(e) {}
+      }
+    }
+
+    // Reset
+    this.multiShots = [];
+    this.sessionShots = [];
+    this.pickedIndices = [];
+    this.multiShotInProgress = false;
+  },
+
+  // ===== THEMES (7 sticker-machine themes) =====
   toggleThemeMenu() {
     const m = document.getElementById('theme-menu');
     const btn = document.getElementById('theme-btn');
@@ -137,12 +329,13 @@ const app = {
     this.frameSheetOpen = false;
     this.stopCamera();
     this.cleanupPeer();
-    this.multiShotCancelled = true; // halt any in-progress multi-shot
+    this.multiShotCancelled = true;
     this.multiShots = [];
+    this.sessionShots = [];
+    this.pickedIndices = [];
     this.multiShotInProgress = false;
     this.showScreen('landing');
     this.loadGalleryPreview();
-    // Clear URL
     window.history.replaceState({}, '', window.location.pathname);
   },
 
@@ -167,16 +360,13 @@ const app = {
     this.startCamera().then(() => {
       this.showScreen('stage');
       setTimeout(() => this.initFrameOverlay(), 100);
-    }).catch(() => {
-      // Camera failed, error already shown
-    });
+    }).catch(() => {});
   },
 
   startTogether(joining = false) {
     this.mode = 'together';
 
     if (joining) {
-      // Joining existing room
       this.showScreen('room');
       document.getElementById('room-title').textContent = 'Join Room';
       document.getElementById('room-create').style.display = 'none';
@@ -185,7 +375,6 @@ const app = {
       if (this.roomCode) input.value = this.roomCode;
       input.focus();
     } else {
-      // Create new room
       this.isHost = true;
       this.roomCode = this.generateRoomCode();
       this.showScreen('room');
@@ -194,8 +383,6 @@ const app = {
       document.getElementById('room-join').style.display = 'none';
       document.getElementById('room-code-display').textContent = this.roomCode;
 
-      // Start camera + PeerJS, then go straight INTO the booth —
-      // the code rides along in the stage topbar (tap to copy the invite)
       this.startCamera().then(() => {
         this.showScreen('stage');
         setTimeout(() => this.initFrameOverlay(), 100);
@@ -217,7 +404,6 @@ const app = {
       try {
         this.localStream = await navigator.mediaDevices.getUserMedia({ video: videoCfg, audio: wantAudio });
       } catch (err) {
-        // mic denied/unavailable must NOT kill the camera — photos still work without voice
         if (wantAudio && err && (err.name === 'NotAllowedError' || err.name === 'NotFoundError' || err.name === 'NotReadableError' || err.name === 'OverconstrainedError')) {
           this.micDenied = true;
           this.localStream = await navigator.mediaDevices.getUserMedia({ video: videoCfg, audio: false });
@@ -228,12 +414,11 @@ const app = {
       const video = document.getElementById('local-video');
       video.srcObject = this.localStream;
       this.applyFilterToVideo();
-      // mark the local half as live so the placeholder shimmer stops
       const localHalf = document.querySelector('.video-half.local');
       if (localHalf) localHalf.dataset.empty = '';
     } catch (err) {
       this.showCameraError(err && err.message ? err.message : String(err));
-      throw err; // propagate so callers can react
+      throw err;
     }
   },
 
@@ -242,14 +427,14 @@ const app = {
     if (!box) {
       box = document.createElement('div');
       box.id = 'camera-error';
-      box.style.cssText = 'position:fixed;inset:0;z-index:200;background:rgba(24,20,16,.94);display:flex;align-items:center;justify-content:center;padding:24px';
-      box.innerHTML = `<div style="background:var(--paper,#FDFBF7);border:2.5px solid var(--fg,#181410);box-shadow:6px 8px 0 var(--fg,#181410);max-width:420px;width:100%;padding:28px 24px;text-align:center">
+      box.style.cssText = 'position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.94);display:flex;align-items:center;justify-content:center;padding:24px';
+      box.innerHTML = `<div style="background:var(--paper);border:3px solid var(--ink);box-shadow:0 6px 0 var(--ink-sh);max-width:420px;width:100%;padding:28px 24px;text-align:center;border-radius:16px">
         <div style="font-family:'Fraunces',serif;font-size:26px;margin-bottom:6px">the camera said no</div>
-        <div style="font-family:'Caveat',cursive;font-size:18px;color:#D64045;margin-bottom:14px">it happens — let's try again</div>
-        <div style="font-family:'Space Mono',monospace;font-size:11px;color:rgba(24,20,16,.6);margin-bottom:18px;word-break:break-word">Check your browser's camera permission for this site, then retry.</div>
+        <div style="font-family:'Caveat',cursive;font-size:18px;color:var(--acc);margin-bottom:14px">it happens — let's try again</div>
+        <div style="font-family:'Space Mono',monospace;font-size:11px;opacity:.6;margin-bottom:18px;word-break:break-word">Check your browser's camera permission for this site, then retry.</div>
         <div style="display:flex;gap:10px;justify-content:center">
-          <button id="cam-retry" style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.1em;padding:12px 22px;background:var(--fg,#181410);color:var(--bg,#F2EBE0);border:2px solid var(--fg,#181410);cursor:pointer">RETRY</button>
-          <button id="cam-back" style="font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.1em;padding:12px 22px;background:transparent;color:var(--fg,#181410);border:2px solid var(--fg,#181410);cursor:pointer">BACK</button>
+          <button id="cam-retry" class="k p">RETRY</button>
+          <button id="cam-back" class="k w">BACK</button>
         </div></div>`;
       document.body.appendChild(box);
       box.querySelector('#cam-retry').onclick = () => { box.remove(); this.startCamera().catch(() => {}); };
@@ -266,7 +451,6 @@ const app = {
     if (video) video.srcObject = null;
   },
 
-  // mirror state lives here; default ON (selfie-style) to match the CSS default
   get mirrored() { return this._mirrored !== undefined ? this._mirrored : true; },
   set mirrored(v) { this._mirrored = v; },
 
@@ -295,7 +479,6 @@ const app = {
     if (v) v.style.transform = this.mirrored ? 'scaleX(-1)' : 'scaleX(1)';
     const btn = document.getElementById('mirror-btn');
     if (btn) btn.classList.toggle('active', this.mirrored);
-    // keep the captured photos consistent with what you see
     this.mirrorCaptures = this.mirrored;
   },
 
@@ -304,7 +487,6 @@ const app = {
     if (this.localStream) {
       this.stopCamera();
       await this.startCamera();
-      // Re-add tracks to peer connection if connected
       if (this.peerConnection && this.mode === 'together') {
         const sender = this.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
         if (sender && this.localStream) {
@@ -338,7 +520,7 @@ const app = {
     row.innerHTML = '';
     for (const [key, f] of Object.entries(FILTERS)) {
       const chip = document.createElement('button');
-      chip.className = 'filter-chip' + (key === this.currentFilter ? ' active' : '');
+      chip.className = 'filter-chip chip' + (key === this.currentFilter ? ' active' : '');
       chip.textContent = f.name;
       chip.dataset.filter = key;
       chip.onclick = () => this.setFilter(key);
@@ -359,7 +541,6 @@ const app = {
     const f = FILTERS[this.currentFilter];
     if (f && video) {
       video.style.filter = f.css;
-      // Also apply to remote video
       const remote = document.getElementById('remote-video');
       if (remote) remote.style.filter = f.css;
     }
@@ -371,9 +552,9 @@ const app = {
     if (!row) return;
     row.innerHTML = '';
     for (const [key, f] of Object.entries(FRAMES)) {
-      if (key !== 'none' && !f.framesNext) continue; // only real designs — old canvas frames retired
+      if (key !== 'none' && !f.framesNext) continue;
       const chip = document.createElement('button');
-      chip.className = 'frame-chip' + (key === this.currentFrame ? ' active' : '');
+      chip.className = 'frame-chip chip' + (key === this.currentFrame ? ' active' : '');
       chip.textContent = f.name;
       chip.dataset.frame = key;
       chip.onclick = () => this.setFrame(key);
@@ -389,12 +570,12 @@ const app = {
     ft.style.display = 'flex';
     ft.innerHTML = '';
     document.querySelectorAll('#frame-categories .frame-cat-btn').forEach(b => {
-      b.style.background = b.id === 'filters-tab' ? 'var(--fg)' : 'var(--bg)';
-      b.style.color = b.id === 'filters-tab' ? 'var(--bg)' : 'var(--fg)';
+      b.style.background = b.id === 'filters-tab' ? 'var(--ink)' : 'var(--paper)';
+      b.style.color = b.id === 'filters-tab' ? 'var(--paper)' : 'var(--ink)';
     });
     for (const [key, f] of Object.entries(FILTERS)) {
       const chip = document.createElement('button');
-      chip.className = 'frame-chip';
+      chip.className = 'frame-chip chip';
       chip.textContent = f.name || key;
       if (key === this.currentFilter) chip.classList.add('active');
       chip.onclick = () => { this.setFilter(key); this.showFiltersInSheet(); };
@@ -406,38 +587,36 @@ const app = {
     this.currentFrame = key;
     this.applyPreviewAspect();
     this.updateFrameOverlay();
-    // share the pick with the partner so both composites match
     if (this.dataConnection && this.dataConnection.open) {
       try { this.dataConnection.send({ action: 'setFrame', key }); } catch(e) {}
     }
-    // Update visual thumbnails active state
     document.querySelectorAll('.frame-thumb').forEach(t => {
       t.classList.toggle('active', t.dataset.frame === key);
     });
   },
-  
+
   // ===== FRAME PREVIEW OVERLAY =====
   frameOverlayCanvas: null,
   frameOverlayCtx: null,
   framePreviewLoop: null,
-  
+
   initFrameOverlay() {
     this.frameOverlayCanvas = document.getElementById('frame-overlay');
     if (!this.frameOverlayCanvas) return;
     this.frameOverlayCtx = this.frameOverlayCanvas.getContext('2d');
     this.startFramePreview();
   },
-  
+
   startFramePreview() {
     if (this.framePreviewLoop) cancelAnimationFrame(this.framePreviewLoop);
-    
+
     const tick = () => {
       this.drawFrameOverlay();
       this.framePreviewLoop = requestAnimationFrame(tick);
     };
     tick();
   },
-  
+
   stopFramePreview() {
     if (this.framePreviewLoop) {
       cancelAnimationFrame(this.framePreviewLoop);
@@ -447,30 +626,28 @@ const app = {
       this.frameOverlayCtx.clearRect(0, 0, this.frameOverlayCanvas.width, this.frameOverlayCanvas.height);
     }
   },
-  
+
   drawFrameOverlay() {
     if (!this.frameOverlayCanvas || !this.frameOverlayCtx) return;
     const container = document.getElementById('video-container');
     if (!container) return;
-    
+
     const rect = container.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    
-    // Resize canvas to match container
+
     if (this.frameOverlayCanvas.width !== rect.width * dpr || this.frameOverlayCanvas.height !== rect.height * dpr) {
       this.frameOverlayCanvas.width = rect.width * dpr;
       this.frameOverlayCanvas.height = rect.height * dpr;
       this.frameOverlayCanvas.style.width = rect.width + 'px';
       this.frameOverlayCanvas.style.height = rect.height + 'px';
     }
-    
+
     const ctx = this.frameOverlayCtx;
     const w = this.frameOverlayCanvas.width;
     const h = this.frameOverlayCanvas.height;
-    
+
     ctx.clearRect(0, 0, w, h);
-    
-    // LIVE IN-FRAME PREVIEW: camera shows through the frame's photo slots
+
     const frameDef = FRAMES[this.currentFrame];
     if (frameDef && frameDef.framesNext) {
       ctx.save();
@@ -489,7 +666,6 @@ const app = {
     }
   },
 
-  // shape the live stage to the frame's own aspect so the camera IS the frame (no letterbox bands)
   applyPreviewAspect() {
     const vc = document.getElementById('video-container');
     if (!vc) return;
@@ -504,7 +680,6 @@ const app = {
       ar = '0.78';
     }
     vc.style.aspectRatio = ar;
-    // vertical strips on short screens: cap by height so it never overflows the stage
     if (parseFloat(ar) < 0.5) {
       vc.style.maxHeight = '100%';
       vc.style.width = 'auto';
@@ -521,22 +696,19 @@ const app = {
     const p = n => String(n).padStart(2, '0');
     return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
   },
-  
+
   updateFrameOverlay() {
     this.drawFrameOverlay();
   },
-  
+
   // ===== FRAME PICKER BOTTOM SHEET =====
   frameSheetOpen: false,
   frameCategory: 'all',
-  
+
   toggleFrameSheet() {
     const sheet = document.getElementById('frame-sheet');
     if (!sheet) return;
 
-    // The slide-up is fully CSS-driven now (the .open class toggles
-    // transform + visibility with a transition). JS just flips the class so
-    // the transition fires reliably and there is no display:none flash.
     this.frameSheetOpen = !this.frameSheetOpen;
     sheet.classList.toggle('open', this.frameSheetOpen);
     if (this.frameSheetOpen) {
@@ -545,48 +717,41 @@ const app = {
     }
     this.drawFrameOverlay();
   },
-  
+
   buildFrameThumbnails() {
     const container = document.getElementById('frame-thumbnails');
     if (!container) return;
     container.innerHTML = '';
-    
-    // frames-next first, old frames after
+
     const ordered = Object.entries(FRAMES).sort((a, b) =>
       (b[1].framesNext ? 1 : 0) - (a[1].framesNext ? 1 : 0));
     for (const [key, frame] of ordered) {
-      if (key !== 'none' && !frame.framesNext) continue; // old canvas frames retired from the picker
-      // Category filter
+      if (key !== 'none' && !frame.framesNext) continue;
       if (this.frameCategory !== 'all' && frame.category && frame.category !== this.frameCategory) continue;
-      
+
       const thumb = document.createElement('div');
       thumb.className = 'frame-thumb' + (key === this.currentFrame ? ' active' : '');
       thumb.dataset.frame = key;
-      // sizing/styling from main.css (.frame-thumb) — no inline overrides
-      
-      // Mini canvas showing frame on placeholder
+
       const mini = document.createElement('canvas');
       mini.width = 108;
       mini.height = 144;
       mini.style.cssText = 'width:100%;height:100%;display:block';
       const mctx = mini.getContext('2d');
-      
-      // Draw placeholder background (warm gradient simulating a photo)
+
       const grad = mctx.createLinearGradient(0, 0, 108, 144);
       grad.addColorStop(0, '#E8C4A0');
       grad.addColorStop(0.5, '#D4A080');
       grad.addColorStop(1, '#A07050');
       mctx.fillStyle = grad;
       mctx.fillRect(0, 0, 108, 144);
-      
-      // Simple face silhouette
+
       mctx.fillStyle = 'rgba(255,220,180,0.7)';
       mctx.beginPath();
       mctx.arc(54, 55, 22, 0, Math.PI * 2);
       mctx.fill();
       mctx.fillRect(34, 75, 40, 50);
-      
-      // Draw frame on top
+
       if (frame.framesNext && typeof FramesNext !== 'undefined') {
         const url = FramesNext.thumbURL(key, app.currentLayout);
         const im = document.createElement('img');
@@ -602,24 +767,20 @@ const app = {
         if (frame.draw) frame.draw(mctx, 108, 144);
         thumb.appendChild(mini);
       }
-      
-      // Name label
+
       const label = document.createElement('div');
       label.textContent = frame.name;
-      label.style.cssText = 'position:absolute;bottom:-19px;left:-10px;right:-10px;text-align:center;font-family:Space Mono,monospace;font-size:8px;text-transform:uppercase;letter-spacing:0.04em;color:var(--fg);opacity:0.65;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+      label.style.cssText = 'position:absolute;bottom:-19px;left:-10px;right:-10px;text-align:center;font-family:Space Mono,monospace;font-size:8px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink);opacity:0.65;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
       label.className = 'thumb-label';
       thumb.appendChild(label);
-      
+
       thumb.onclick = () => {
         this.setFrame(key);
       };
-      
-      // label space handled by CSS margin-bottom on .frame-thumb
-      
+
       container.appendChild(thumb);
     }
-    
-    // Category tab handlers
+
     document.querySelectorAll('.frame-cat-btn').forEach(btn => {
       btn.onclick = () => this.setFrameCategory(btn.dataset.cat);
     });
@@ -630,13 +791,13 @@ const app = {
     const th = document.getElementById('frame-thumbnails');
     if (ft && th) { ft.style.display = 'none'; th.style.display = 'flex'; }
     document.querySelectorAll('#frame-categories .frame-cat-btn').forEach(b => {
-      if (b.id === 'filters-tab') { b.style.background = 'var(--bg)'; b.style.color = 'var(--fg)'; }
+      if (b.id === 'filters-tab') { b.style.background = 'var(--paper)'; b.style.color = 'var(--ink)'; }
     });
     this.frameCategory = cat;
     document.querySelectorAll('.frame-cat-btn').forEach(b => {
       const active = b.dataset.cat === cat;
-      b.style.background = active ? 'var(--fg)' : 'var(--bg)';
-      b.style.color = active ? 'var(--bg)' : 'var(--fg)';
+      b.style.background = active ? 'var(--ink)' : 'var(--paper)';
+      b.style.color = active ? 'var(--paper)' : 'var(--ink)';
       b.classList.toggle('active', active);
     });
     this.buildFrameThumbnails();
@@ -650,7 +811,7 @@ const app = {
     for (const [key, l] of Object.entries(LAYOUTS)) {
           if (l.duoOnly && this.mode !== 'together') continue;
           const chip = document.createElement('button');
-      chip.className = 'frame-chip layout-chip' + (key === this.currentLayout ? ' active' : '');
+      chip.className = 'frame-chip chip layout-chip' + (key === this.currentLayout ? ' active' : '');
       chip.textContent = l.name;
       chip.dataset.layout = key;
       chip.onclick = () => this.setLayout(key);
@@ -660,23 +821,23 @@ const app = {
 
   setLayout(key) {
     if (!FramesNext.supports(key) && FRAMES[this.currentFrame] && FRAMES[this.currentFrame].framesNext) {
-      key = 'strip-4'; // unsupported layout with an nx frame: snap to a supported one
+      key = 'strip-4';
     }
     const ddef = LAYOUTS[key];
     if (ddef && ddef.duoOnly && this.mode !== 'together') key = 'strip-4';
     this.currentLayout = key;
-    // share the pick with the partner so both composites match
     if (this.dataConnection && this.dataConnection.open) {
       try { this.dataConnection.send({ action: 'setLayout', key }); } catch(e) {}
     }
     this.applyPreviewAspect();
     this.multiShots = [];
+    this.sessionShots = [];
+    this.pickedIndices = [];
     this.multiShotInProgress = false;
     this.multiShotCancelled = false;
     document.querySelectorAll('#layout-row .frame-chip').forEach(c => {
       c.classList.toggle('active', c.dataset.layout === key);
     });
-    // Update shutter button label
     const layout = LAYOUTS[key];
     if (layout && layout.shots > 1) {
       document.getElementById('shutter-btn').title = `Shot 1 of ${layout.shots}`;
@@ -699,17 +860,15 @@ const app = {
         if (count > 0) {
           numEl.textContent = count;
           numEl.style.animation = 'none';
-          void numEl.offsetWidth; // force reflow
+          void numEl.offsetWidth;
           numEl.style.animation = 'fadeInUp 0.5s ease-out';
           this.playTickSound();
-          // SHARED VOICE: broadcast each tick so both phones breathe together
           if (this.mode === 'together' && this.dataConnection && this.dataConnection.open && this.isHost) {
             try { this.dataConnection.send({ action: 'sharedTick', n: count }); } catch(e) {}
           }
           count--;
           setTimeout(tick, 1000);
         } else {
-          // FLASH
           flash.classList.add('active');
           this.playShutterSound();
           setTimeout(() => {
@@ -724,54 +883,66 @@ const app = {
   },
 
   // ===== CAPTURE =====
-  async capture() {
+  async capture(fromChain) {
+    // guard: only ONE capture chain at a time. External calls (shutter/sync) are
+    // rejected while a chain runs; the chain's own setTimeout continuation passes
+    // fromChain=true so it never blocks itself.
+    if (this.multiShotInProgress && this._captureChainActive && !fromChain) return;
     const shutterBtn = document.getElementById('shutter-btn');
     shutterBtn.disabled = true;
 
     const layout = LAYOUTS[this.currentLayout];
+    const targetShots = this.shotsNeededForLayout(this.currentLayout);
 
     try {
       if (layout && layout.shots > 1) {
-        // Multi-shot mode
+        // Multi-shot mode — capture 2x the slots so the user can pick the best ones
+        if (!fromChain) {
+          // fresh chain: reset state. Chain continuations must NOT reset (they'd wipe prior shots)
+          this.sessionShots = [];
+        }
         this.multiShotInProgress = true;
+        this._captureChainActive = true;
         this.multiShotCancelled = false;
 
         await this.countdown(3);
-
         if (this.multiShotCancelled) return;
 
-        // Capture single frame to temp canvas
         const shotData = this.captureSingleFrame();
         this.multiShots.push(shotData);
+        this.sessionShots.push(shotData);
 
-        // PAIR mode: share every shot with the partner so both can build the full strip
         if (this.currentLayout === 'pair' && this.dataConnection && this.dataConnection.open) {
-          try { this.dataConnection.send({ action: 'pairShot', index: this.multiShots.length - 1, data: shotData }); } catch(e) {}
+          try { this.dataConnection.send({ action: 'pairShot', index: this.sessionShots.length - 1, data: shotData }); } catch(e) {}
         }
 
-        const shotNum = this.multiShots.length;
+        const shotNum = this.sessionShots.length;
 
-        if (shotNum < layout.shots) {
-          // More shots needed
-          shutterBtn.title = `Shot ${shotNum + 1} of ${layout.shots}`;
-          // Quick visual feedback
+        if (shotNum < targetShots) {
+          shutterBtn.title = `Shot ${shotNum + 1} of ${targetShots}`;
           this.flashFeedback();
           shutterBtn.disabled = false;
-          // Auto-countdown for next shot after a short breather
           setTimeout(() => {
-            if (!this.multiShotCancelled) this.capture();
+            if (!this.multiShotCancelled) this.capture(true);
           }, 1500);
           return;
         }
 
-        // All shots taken — composite them (await the async result!)
+        // All shots captured — go to PICK-YOUR-BEST-FOUR (skipped for pair v1 — see notes)
+        shutterBtn.disabled = false;
         if (this.currentLayout === 'pair') {
+          // pair v1: just composite everything in tap order, no pick screen
+          this._captureChainActive = false;
           await this.finalizePairCapture();
-          return; // finalizePairCapture drives its own reveal
+          return;
         }
-        await this.compositeMultiShot();
+        this.openPickScreen();
+        this.multiShots = [];
+        this.multiShotInProgress = false;
+        this._captureChainActive = false;
+        return;
       } else {
-        // Single shot
+        // Single shot — straight to reveal (no pick screen)
         await this.countdown(3);
         if (this.multiShotCancelled) return;
         await this.composite();
@@ -779,9 +950,13 @@ const app = {
 
       this.showReveal();
       this.multiShots = [];
+      this.sessionShots = [];
+      this.pickedIndices = [];
       this.multiShotInProgress = false;
+      this._captureChainActive = false;
     } catch (err) {
       console.error('Capture error:', err);
+      this._captureChainActive = false;
       alert('Something went wrong while capturing. Please try again.');
     } finally {
       shutterBtn.disabled = false;
@@ -792,7 +967,6 @@ const app = {
     const flash = document.getElementById('flash');
     flash.classList.add('active');
     setTimeout(() => flash.classList.remove('active'), 120);
-    // capture-moment pulse on the shutter disk so the press feels alive
     const shutter = document.getElementById('shutter-btn');
     if (shutter) {
       shutter.classList.remove('pulse');
@@ -803,13 +977,11 @@ const app = {
   },
 
   captureSingleFrame() {
-    // Capture current video to a temp canvas, return dataURL
     const localVideo = document.getElementById('local-video');
     const remoteVideo = document.getElementById('remote-video');
     const hasRemote = this.mode === 'together' && remoteVideo && remoteVideo.srcObject;
 
     const tmp = document.createElement('canvas');
-    // Portrait 4:5 normally; DUO layouts capture wide 16:9 so two faces fit side-by-side
     const duoWide = this.currentLayout === 'duo-strip' || this.currentLayout === 'duo-grid';
     const W = duoWide ? 1440 : 1080;
     const H = duoWide ? 810 : 1350;
@@ -817,7 +989,7 @@ const app = {
     tmp.height = H;
     const tctx = tmp.getContext('2d');
 
-    tctx.fillStyle = '#F2EBE0';
+    tctx.fillStyle = '#FAF3E6';
     tctx.fillRect(0, 0, W, H);
 
     const filterDef = FILTERS[this.currentFilter];
@@ -825,7 +997,6 @@ const app = {
 
     const doMirror = this.mirrorCaptures;
     if (this.currentLayout === 'pair') {
-      // PAIR: each person shoots their OWN column — local camera only, full frame
       this.drawCover(tctx, localVideo, 0, 0, W, H);
     } else if (hasRemote) {
       const gutter = 12;
@@ -845,16 +1016,13 @@ const app = {
   },
 
   // Returns a Promise that resolves when compositing is complete
-  // PAIR mode: wait for partner's 4 shots, merge into column order, composite, reveal BOTH sides
   async finalizePairCapture() {
-    const mine = [...this.multiShots];
+    const mine = [...this.multiShots.length ? this.multiShots : this.sessionShots];
     this.pairPartnerShots = this.pairPartnerShots || [];
-    // wait up to 12s for the partner's shots to finish arriving
     for (let i = 0; i < 24 && this.pairPartnerShots.length < 4; i++) {
       await new Promise(r => setTimeout(r, 500));
     }
     const theirs = this.pairPartnerShots.slice(0, 4);
-    // host = LEFT column, guest = RIGHT column (template slot order is L0..L3 then R0..R3)
     const isHost = this.isHost;
     const ordered = isHost
       ? [...mine, ...theirs, ...Array(Math.max(0, 8 - mine.length - theirs.length)).fill(mine[mine.length-1] || theirs[0])]
@@ -863,6 +1031,8 @@ const app = {
     try { await this.compositeMultiShot(); } catch (e) { console.warn('pair composite failed', e); }
     this.showReveal();
     this.multiShots = [];
+    this.sessionShots = [];
+    this.pickedIndices = [];
     this.multiShotInProgress = false;
     this.pairPartnerShots = [];
     document.getElementById('shutter-btn').disabled = false;
@@ -874,12 +1044,10 @@ const app = {
     const W = 1080;
     let H;
 
-    // Calculate canvas size based on layout
     if (this.currentLayout === 'strip-4') {
-      // Each cell is ~4:5 aspect, 4 stacked vertically + gaps
       const gap = 16;
       const cellW = W - gap * 2;
-      const cellH = Math.round(cellW * 5 / 4); // 4:5 per cell
+      const cellH = Math.round(cellW * 5 / 4);
       H = cellH * 4 + gap * 5;
     } else if (this.currentLayout === 'strip-3') {
       const gap = 16;
@@ -887,7 +1055,6 @@ const app = {
       const cellH = Math.round(cellW * 5 / 4);
       H = cellH * 3 + gap * 4;
     } else if (this.currentLayout === 'grid-2x2') {
-      // Square canvas: 2 cols × 2 rows
       H = W;
     } else {
       H = 1350;
@@ -897,13 +1064,11 @@ const app = {
     this.canvas.height = H;
     const ctx = this.ctx;
 
-    // Background
-    ctx.fillStyle = '#F2EBE0';
+    ctx.fillStyle = '#FAF3E6';
     ctx.fillRect(0, 0, W, H);
 
     const gap = 16;
 
-    // Load all images then draw — RETURN the promise so caller can await
     return new Promise((resolve, reject) => {
       const loadPromises = shots.map(dataURL => {
         return new Promise((res, rej) => {
@@ -915,11 +1080,9 @@ const app = {
       });
 
       Promise.all(loadPromises).then(images => {
-        // No filter on composite level — each shot already has filter baked in
         ctx.filter = 'none';
 
         if (this.currentLayout === 'strip-4' || this.currentLayout === 'strip-3') {
-          // Vertical strip
           const cellH = (H - gap * (shots.length + 1)) / shots.length;
           const cellW = W - gap * 2;
           images.forEach((img, i) => {
@@ -927,7 +1090,6 @@ const app = {
             this.drawCover(ctx, img, gap, y, cellW, cellH);
           });
         } else if (this.currentLayout === 'grid-2x2') {
-          // 2x2 grid
           const cellW = (W - gap * 3) / 2;
           const cellH = (H - gap * 3) / 2;
           images.forEach((img, i) => {
@@ -939,11 +1101,9 @@ const app = {
           });
         }
 
-        // Draw frame on top
         ctx.filter = 'none';
         const frameDef = FRAMES[this.currentFrame];
         if (frameDef && frameDef.framesNext) {
-          // frames-next v2: pre-rendered template + canvas compositing (iOS-safe)
           FramesNext.renderToCanvas(this.currentFrame.replace('nx-',''),
             this.currentLayout, this.canvas, this.multiShots)
             .then(ok => {
@@ -971,7 +1131,6 @@ const app = {
     const remoteVideo = document.getElementById('remote-video');
     const hasRemote = this.mode === 'together' && remoteVideo && remoteVideo.srcObject;
 
-    // Canvas dimensions (portrait for photobooth feel)
     const W = 1080;
     const H = 1350;
 
@@ -979,32 +1138,23 @@ const app = {
     this.canvas.height = H;
     const ctx = this.ctx;
 
-    // Fill background
-    ctx.fillStyle = '#F2EBE0';
+    ctx.fillStyle = '#FAF3E6';
     ctx.fillRect(0, 0, W, H);
 
-    // Apply filter
     const filterDef = FILTERS[this.currentFilter];
     ctx.filter = filterDef ? filterDef.canvas : 'none';
 
     if (hasRemote) {
-      // Dual mode — side by side
       const gutter = 12;
       const halfW = (W - gutter) / 2;
-
-      // Local (left) — un-mirror for export (video is CSS-mirrored but canvas draws raw)
       this.drawCover(ctx, localVideo, 0, 0, halfW, H);
-      // Remote (right)
       this.drawCover(ctx, remoteVideo, halfW + gutter, 0, halfW, H);
     } else {
-      // Solo mode — full frame
       this.drawCover(ctx, localVideo, 0, 0, W, H);
     }
 
-    // Reset filter for frame
     ctx.filter = 'none';
 
-    // Draw frame
     const frameDef = FRAMES[this.currentFrame];
     if (frameDef && frameDef.framesNext) {
       const self = this;
@@ -1020,12 +1170,10 @@ const app = {
     }
     if (frameDef) frameDef.draw(ctx, W, H);
 
-    // Store result
     this.capturedImage = this.canvas.toDataURL('image/jpeg', 0.92);
   },
 
   drawCover(ctx, source, x, y, w, h) {
-    // Object-fit: cover math
     const sw = source.videoWidth || source.width || source.naturalWidth || 1280;
     const sh = source.videoHeight || source.height || source.naturalHeight || 720;
     const sRatio = sw / sh;
@@ -1033,13 +1181,11 @@ const app = {
     let sx, sy, sWidth, sHeight;
 
     if (sRatio > dRatio) {
-      // Source is wider — crop sides
       sHeight = sh;
       sWidth = sh * dRatio;
       sx = (sw - sWidth) / 2;
       sy = 0;
     } else {
-      // Source is taller — crop top/bottom
       sWidth = sw;
       sHeight = sw / dRatio;
       sx = 0;
@@ -1062,10 +1208,7 @@ const app = {
 
     const polaroid = document.getElementById('reveal-polaroid');
     const canvas = document.getElementById('reveal-canvas');
-    // (date stamp removed — the frame template ALREADY contains its own
-    //  date art; a duplicate date below the polaroid was typographic noise.)
 
-    // Draw captured image to reveal canvas
     const img = new Image();
     img.onload = () => {
       canvas.width = img.width;
@@ -1073,21 +1216,17 @@ const app = {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0);
 
-      // Trigger develop animation
       polaroid.classList.remove('developed');
       setTimeout(() => polaroid.classList.add('developed'), 100);
     };
     img.onerror = () => console.error('Failed to load captured image for reveal');
     img.src = this.capturedImage;
 
-    // Slight random rotation
     const rot = (Math.random() - 0.5) * 3;
     polaroid.style.transform = `rotate(${rot}deg)`;
 
-    // Save to gallery (local + cloud)
     this.addToGallery(this.capturedImage);
 
-    // Upload to Supabase (cloud gallery)
     if (typeof storage !== 'undefined') {
       storage.upload(this.capturedImage).then(url => {
         if (url) console.log('Photo saved to cloud');
@@ -1097,7 +1236,7 @@ const app = {
 
   retake() {
     this.showScreen('stage');
-      setTimeout(() => this.initFrameOverlay(), 100);
+    setTimeout(() => this.initFrameOverlay(), 100);
   },
 
   // ===== DOWNLOAD =====
@@ -1108,8 +1247,6 @@ const app = {
     try {
       const blob = await (await fetch(this.capturedImage)).blob();
       const url = URL.createObjectURL(blob);
-      // iOS Safari cannot .click() a download link reliably — open in a tab so
-      // long-press → "Save to Photos" / Share works, everywhere else it downloads.
       const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       const link = document.createElement('a');
       link.href = url; link.download = name; link.rel = 'noopener';
@@ -1129,7 +1266,6 @@ const app = {
 
   saveGallery() {
     try {
-      // Only keep last 20 to avoid localStorage limits (~5MB)
       const recent = this.gallery.slice(0, 20);
       localStorage.setItem('us_gallery', JSON.stringify(recent));
     } catch(e) { /* localStorage full, skip */ }
@@ -1147,10 +1283,8 @@ const app = {
     const grid = document.getElementById('gallery-grid');
     grid.innerHTML = '<p class="gallery-empty">Loading your moments...</p>';
 
-    // Load both local + cloud photos (dedup by url)
     let photos = [...this.gallery];
 
-    // Try loading from Supabase
     if (typeof storage !== 'undefined') {
       try {
         const cloudPhotos = await storage.listPhotos();
@@ -1167,7 +1301,6 @@ const app = {
       return;
     }
 
-    // Sort newest first
     photos.sort((a, b) => (b.time || b.created || 0) - (a.time || a.created || 0));
 
     grid.innerHTML = '';
@@ -1178,7 +1311,6 @@ const app = {
       const div = document.createElement('div');
       div.className = 'gallery-item';
       div.onclick = () => {
-        // Safe open — use DOM API, no innerHTML injection
         const w = window.open('', '_blank');
         if (w) {
           const imgEl = w.document.createElement('img');
@@ -1193,10 +1325,9 @@ const app = {
       img.loading = 'lazy';
       div.appendChild(img);
 
-      // Delete button
       const delBtn = document.createElement('button');
       delBtn.innerHTML = '✕';
-      delBtn.style.cssText = 'position:absolute;top:4px;right:4px;width:28px;height:28px;background:rgba(24,20,16,0.8);color:#F2EBE0;border:1px solid #F2EBE0;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;z-index:5';
+      delBtn.style.cssText = 'position:absolute;top:4px;right:4px;width:28px;height:28px;background:rgba(0,0,0,0.8);color:#F2EBE0;border:1px solid #F2EBE0;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;z-index:5';
       delBtn.onclick = (e) => {
         e.stopPropagation();
         if (confirm('Delete this photo?')) {
@@ -1211,24 +1342,21 @@ const app = {
   },
 
   async deletePhoto(item, idx, element) {
-    // Remove from local gallery
     const localIdx = this.gallery.findIndex(g => g.url === item.url);
     if (localIdx >= 0) {
       this.gallery.splice(localIdx, 1);
       this.saveGallery();
     }
-    // Delete from Supabase cloud
     if (typeof storage !== 'undefined' && item.url) {
       await storage.deletePhoto(item.url);
     }
-    // Remove from DOM
     if (element) element.remove();
     console.log('Photo deleted');
   },
 
   // ===== ROOM CODE =====
   generateRoomCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/O/0/1
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
     for (let i = 0; i < 5; i++) {
       code += chars[Math.floor(Math.random() * chars.length)];
@@ -1244,7 +1372,6 @@ const app = {
       navigator.clipboard.writeText(url).then(() => {
         alert('Link copied! Send it to your person.');
       }).catch(() => {
-        // Fallback for browsers without clipboard API
         prompt('Copy this link:', url);
       });
     } else {
@@ -1270,7 +1397,6 @@ const app = {
 
   // ===== WEBRTC (PeerJS) =====
   initPeerJS() {
-    // Clean up any existing peer
     this.cleanupPeer();
 
     const peerId = `us-${this.roomCode}-${this.isHost ? 'host' : 'guest'}`;
@@ -1280,7 +1406,6 @@ const app = {
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
           { urls: 'stun:stun2.l.google.com:19302' },
-          // Free TURN relay (may be unreliable — consider a paid TURN for production)
           { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
           { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
           { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
@@ -1288,22 +1413,16 @@ const app = {
       },
     });
 
-    // Register ALL event handlers immediately (not inside 'open')
-    // to avoid missing events due to race conditions.
-
     this.peer.on('open', (id) => {
       this.updateStatus('connecting', 'CONNECTING');
 
       if (this.isHost) {
-        // Host waits for guest. Data connection + call handlers are below.
         this.updateStatus('connecting', 'WAITING');
       } else {
-        // Guest connects to host's data channel
         const hostId = `us-${this.roomCode}-host`;
         const conn = this.peer.connect(hostId, { reliable: true });
         this.setupDataConnection(conn);
 
-        // When data channel opens, call the host with our stream
         conn.on('open', () => {
           const call = this.peer.call(hostId, this.localStream);
           if (call) {
@@ -1313,12 +1432,10 @@ const app = {
       }
     });
 
-    // HOST: receive data connection from guest
     this.peer.on('connection', (conn) => {
       this.setupDataConnection(conn);
     });
 
-    // BOTH: handle incoming media call (answer with our stream)
     this.peer.on('call', (call) => {
       call.answer(this.localStream);
       this.setupCall(call);
@@ -1332,7 +1449,6 @@ const app = {
         alert('Room not found. Check the code and try again.');
         this.goHome();
       } else if (err.type === 'unavailable-id') {
-        // Another tab/window already has this peer ID
         alert('This room is already open in another tab. Please close it and try again.');
         this.goHome();
       } else if (err.type === 'network' || err.type === 'server-error') {
@@ -1341,7 +1457,6 @@ const app = {
     });
 
     this.peer.on('disconnected', () => {
-      // Attempt reconnection
       if (this.peer && !this.peer.destroyed) {
         try { this.peer.reconnect(); } catch(e) {}
       }
@@ -1353,12 +1468,10 @@ const app = {
 
     conn.on('open', () => {
       if (this.isHost) {
-        // Host now calls the guest (one-directional call to avoid glare)
         const call = this.peer.call(conn.peer, this.localStream);
         if (call) this.setupCall(call);
       }
       this.updateStatus('connected', this.mode === 'together' ? 'PAIRED' : 'CONNECTED');
-      // Host has been waiting on the room screen — pairing is done, bring them in
       const active = document.querySelector('.screen.active');
       if (this.mode === 'together' && active && active.id === 'room') {
         this.showScreen('stage');
@@ -1367,7 +1480,6 @@ const app = {
       if (this.mode === 'together' && this.isHost) {
         this.showRoomPill('CONNECTED · ' + this.roomCode, true);
       }
-      // announce our current picks so both sides converge on identical settings
       try {
         conn.send({ action: 'setFrame', key: this.currentFrame });
         conn.send({ action: 'setLayout', key: this.currentLayout });
@@ -1377,7 +1489,15 @@ const app = {
     conn.on('data', (data) => {
       if (!data) return;
       if (data.action === 'sharedTick') {
-        this.playTickSound(); // two rooms, one breath
+        this.playTickSound();
+      } else if (data.action === 'finalStrip' && data.data) {
+        // partner finished picking — adopt their strip and join the reveal
+        this.capturedImage = data.data;
+        this.sessionShots = [];
+        this.pickedIndices = [];
+        this.multiShotInProgress = false;
+        this._captureChainActive = false;
+        this.showReveal();
       } else if (data.action === 'pairShot' && typeof data.index === 'number' && data.data) {
         this.pairPartnerShots = this.pairPartnerShots || [];
         this.pairPartnerShots[data.index] = data.data;
@@ -1393,7 +1513,6 @@ const app = {
     conn.on('close', () => {
       this.dataConnection = null;
       this.updateStatus('', 'DISCONNECTED');
-      // Don't auto-goHome — let user decide
     });
 
     conn.on('error', (err) => {
@@ -1422,7 +1541,6 @@ const app = {
 
   // ===== SYNCED CAPTURE (for together mode) =====
   handleSyncedCapture(captureTime, frame, layout) {
-    // converge settings before the countdown starts — both sides must composite the same design
     if (frame && frame !== this.currentFrame) this.setFrame(frame);
     if (layout && layout !== this.currentLayout) this.setLayout(layout);
     const delay = captureTime - Date.now();
@@ -1435,11 +1553,10 @@ const app = {
 
   requestSyncedCapture() {
     if (this.dataConnection && this.dataConnection.open) {
-      const captureTime = Date.now() + 3500; // 3.5s from now (3s countdown + buffer)
+      const captureTime = Date.now() + 3500;
       this.dataConnection.send({ action: 'capture', captureTime, frame: this.currentFrame, layout: this.currentLayout });
       this.handleSyncedCapture(captureTime, this.currentFrame, this.currentLayout);
     } else {
-      // Not connected or solo — just capture locally
       this.capture();
     }
   },
@@ -1454,8 +1571,6 @@ const app = {
     }
     if (txt) {
       txt.textContent = text || '';
-      // only show the text label when there's something to say —
-      // idle+connected or idle+solo is invisible by default
       const meaningful = state === 'connecting' || state === 'connected' || state === 'error';
       txt.dataset.shown = meaningful && text ? '1' : '';
     }
@@ -1470,7 +1585,6 @@ const app = {
       if (!AC) return null;
       this.audioCtx = new AC();
     }
-    // Resume if suspended (autoplay policy)
     if (this.audioCtx.state === 'suspended') {
       this.audioCtx.resume();
     }
@@ -1497,7 +1611,6 @@ const app = {
     try {
       const ctx = this.getAudio();
       if (!ctx) return;
-      // Two quick clicks for mechanical shutter feel
       for (let i = 0; i < 2; i++) {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -1522,9 +1635,9 @@ const app = {
       const gain = ctx.createGain();
       osc.connect(gain);
       gain.connect(ctx.destination);
-      osc.frequency.setValueAtTime(523, ctx.currentTime); // C5
-      osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1); // E5
-      osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2); // G5
+      osc.frequency.setValueAtTime(523, ctx.currentTime);
+      osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1);
+      osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2);
       gain.gain.setValueAtTime(0.1, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
       osc.start();

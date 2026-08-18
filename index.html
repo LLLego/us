@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>us — two places, one frame</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23FBF6EC'/%3E%3Ccircle cx='70' cy='30' r='12' fill='%23E8636A'/%3E%3Ctext x='50' y='72' font-family='Georgia,serif' font-size='52' font-style='italic' text-anchor='middle' fill='%232A1F1A'%3Eu%3C/text%3E%3C/svg%3E">
+<title>us — sticker machine, two places, one frame</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23FAF3E6'/%3E%3Ccircle cx='70' cy='30' r='12' fill='%23F2A0B4'/%3E%3Ctext x='50' y='72' font-family='Georgia,serif' font-size='52' font-style='italic' text-anchor='middle' fill='%233A2E24'%3Eu%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,700;1,9..144,300;1,9..144,400;1,9..144,700&family=Inter:wght@300;400;500;600&family=Space+Mono:wght@400;700&family=Caveat:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/main.css?v=22">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,700;1,9..144,300;1,9..144,400;1,9..144,700&family=Space+Mono:wght@400;700&family=Caveat:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css?v=23">
 </head>
 <body>
 
@@ -17,7 +17,7 @@
 
 <nav class="landing-nav">
 <a href="#" onclick="app.goHome();return false" class="landing-logo">us<b>.</b></a>
-<button class="btn" onclick="app.openGallery()">Gallery</button>
+<button class="k y" onclick="app.openGallery()">Gallery</button>
 </nav>
 
 <section class="landing-hero">
@@ -25,6 +25,9 @@
 <h1 class="landing-title">for <em>us</em>.</h1>
 <p class="landing-sub">open when you miss them.</p>
 <p class="landing-hand">two places. one frame.</p>
+<div id="drop-badge-host" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+<span id="drop-badge" class="drop-badge" onclick="app.openDrop()" style="display:none">this month ✦ <span class="x" onclick="event.stopPropagation();app.dismissDropBadge()" title="dismiss">✕</span></span>
+</div>
 </section>
 
 <section class="landing-cards">
@@ -72,21 +75,44 @@
 
 </div>
 
+<!-- ===== MONTHLY DROP (NEW) ===== -->
+<div id="drop-screen" class="screen">
+<div class="drop-top">
+<span class="title">this month's drop</span>
+<span class="counter" id="drop-counter">07 / 09</span>
+</div>
+<div class="drop-stage">
+<div class="drop-glow"></div>
+<div class="drop-template" id="drop-template">
+<img id="drop-img" src="" alt="monthly frame">
+</div>
+<div class="drop-badge-floating"><span class="badge" id="drop-badge-floating">NEW DROP · AUG ✦</span></div>
+</div>
+<div class="drop-foot">
+<div class="meta">
+<div class="name" id="drop-name">Pucca is Present</div>
+<div class="sub" id="drop-sub">the kissy one is back for august</div>
+</div>
+<button id="drop-use-btn" class="k p" onclick="app.useDropFrame()">USE IT →</button>
+<button class="k w" onclick="app.goHome()">← Back</button>
+</div>
+</div>
+
 <!-- ===== ROOM ===== -->
 <div id="room" class="screen">
-<button class="btn" style="position:absolute;top:calc(env(safe-area-inset-top, 0px) + 16px);left:var(--pad)" onclick="app.goHome()">← Back</button>
+<button class="k w" style="position:absolute;top:calc(env(safe-area-inset-top, 0px) + 16px);left:var(--pad)" onclick="app.goHome()">← Back</button>
 <h2 class="room-title" id="room-title">Create a Room</h2>
 <div id="room-create">
 <p style="opacity:.6;text-align:center;margin-bottom:14px">Share the code with your person.</p>
 <div class="room-code-box" id="room-code-display">------</div>
-<button class="btn btn-primary" style="margin-top:18px" onclick="app.copyRoomCode()">Copy Link</button>
+<button class="k p" style="margin-top:18px" onclick="app.copyRoomCode()">Copy Link</button>
 <div class="waiting-dots" style="margin-top:26px"><span></span><span></span><span></span></div>
 <p style="margin-top:12px;opacity:.5;font-size:14px">Waiting for them…</p>
 </div>
 <div id="room-join" style="display:none">
 <p style="opacity:.6;text-align:center;margin-bottom:14px">Enter the code your person sent you.</p>
 <input class="room-input" id="room-code-input" maxlength="5" placeholder="XXXXX" oninput="this.value=this.value.toUpperCase()">
-<button class="btn btn-primary" style="margin-top:18px" onclick="app.joinRoom()">Join</button>
+<button class="k p" style="margin-top:18px" onclick="app.joinRoom()">Join</button>
 </div>
 </div>
 
@@ -99,20 +125,20 @@
 <span id="room-pill" style="display:none" onclick="app.copyRoomCode()"></span>
 </div>
 <div class="stage-topbar-right">
-<button id="mirror-btn" class="icon-btn" onclick="app.toggleMirror()" aria-label="toggle mirror" title="mirror">
+<button id="mirror-btn" class="icb" onclick="app.toggleMirror()" aria-label="toggle mirror" title="mirror">
 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
 <path d="M12 3v18"/>
 <path d="M5 8l-2 4 2 4"/>
 <path d="M19 8l2 4-2 4"/>
 </svg>
 </button>
-<button id="theme-btn" class="icon-btn" onclick="app.toggleThemeMenu()" title="vibe" aria-label="theme">
+<button id="theme-btn" class="icb" onclick="app.toggleThemeMenu()" title="vibe" aria-label="theme">
 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
 <circle cx="12" cy="12" r="9"/>
 <path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/>
 </svg>
 </button>
-<button class="icon-btn icon-btn-ghost exit-btn" onclick="app.goHome()" aria-label="exit">✕</button>
+<button class="icb" onclick="app.goHome()" aria-label="exit" title="exit">✕</button>
 </div>
 </div>
 
@@ -158,14 +184,18 @@
 </div>
 </div>
 
-<!-- theme switcher -->
+<!-- theme switcher (7 sticker-machine themes) -->
 <div id="theme-menu">
-<button data-theme-set="studio" onclick="app.setTheme('studio')">studio — cream</button>
-<button data-theme-set="machine" onclick="app.setTheme('machine')">machine — pastel</button>
-<button data-theme-set="camera" onclick="app.setTheme('camera')">camera — film</button>
+<button data-theme-set="honey" onclick="app.setTheme('honey')">honey — cream</button>
+<button data-theme-set="strawberry" onclick="app.setTheme('strawberry')">strawberry — blush</button>
+<button data-theme-set="matcha" onclick="app.setTheme('matcha')">matcha — green tea</button>
+<button data-theme-set="blueberry" onclick="app.setTheme('blueberry')">blueberry — dusk</button>
+<button data-theme-set="choco" onclick="app.setTheme('choco')">choco — cocoa</button>
+<button data-theme-set="taro" onclick="app.setTheme('taro')">taro — lavender</button>
+<button data-theme-set="mango" onclick="app.setTheme('mango')">mango — sunny</button>
 </div>
 
-<!-- frame sheet (CSS owns positioning + slide animation; .open toggles it) -->
+<!-- frame sheet -->
 <div id="frame-sheet">
 <div class="sheet-header">
 <span class="sheet-title">pick a <em>frame</em></span>
@@ -190,21 +220,37 @@
 <!-- flash -->
 <div id="flash"></div>
 
+<!-- pick-your-best-four (NEW) -->
+<div id="pick-screen" class="screen">
+<div class="pick-header">
+<div>
+<span class="pick-title">pick your <em>best four!</em></span>
+<div class="pick-sub">the ugly ones never happened</div>
+</div>
+<span id="pick-count" class="badge acc-bg">0 / 4</span>
+</div>
+<div id="pick-grid"></div>
+<div class="pick-actions">
+<button id="retakes-btn" class="k w" onclick="app.pickRetake()">RETAKES</button>
+<button id="print-btn" class="k y" onclick="app.pickPrint()" disabled>PRINT THE STRIP ✂</button>
+</div>
+</div>
+
 <!-- reveal -->
 <div id="reveal" class="screen">
 <div class="reveal-polaroid" id="reveal-polaroid">
 <canvas id="reveal-canvas"></canvas>
 </div>
 <div class="reveal-actions">
-<button class="btn btn-primary" onclick="app.downloadPhoto()">Save Photo</button>
-<button class="btn btn-outline" onclick="app.retake()">Take Another</button>
-<button class="btn btn-outline" onclick="app.openGallery()">Gallery</button>
+<button class="k p" onclick="app.downloadPhoto()">Save Photo</button>
+<button class="k w" onclick="app.retake()">Take Another</button>
+<button class="k g" onclick="app.openGallery()">Gallery</button>
 </div>
 </div>
 
 <!-- gallery -->
 <div id="gallery-screen" class="screen">
-<button class="btn" style="position:absolute;top:calc(env(safe-area-inset-top, 0px) + 16px);left:var(--pad)" onclick="app.goHome()">← Home</button>
+<button class="k w" style="position:absolute;top:calc(env(safe-area-inset-top, 0px) + 16px);left:var(--pad)" onclick="app.goHome()">← Home</button>
 <h2 class="gallery-header">Your <em>moments</em></h2>
 <div class="gallery-sub">kept on your phone</div>
 <div class="gallery-grid" id="gallery-grid"></div>
@@ -214,12 +260,12 @@
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="js/supabase.js?v=22"></script>
-<script src="js/filters.js?v=22"></script>
-<script src="js/stickers.js?v=22"></script>
-<script src="js/html-frames.js?v=22"></script>
-<script src="js/frames.js?v=22"></script>
-<script src="js/frames-next.js?v=22"></script>
-<script src="js/app.js?v=22"></script>
+<script src="js/supabase.js?v=23"></script>
+<script src="js/filters.js?v=23"></script>
+<script src="js/stickers.js?v=23"></script>
+<script src="js/html-frames.js?v=23"></script>
+<script src="js/frames.js?v=23"></script>
+<script src="js/frames-next.js?v=23"></script>
+<script src="js/app.js?v=23"></script>
 </body>
 </html>

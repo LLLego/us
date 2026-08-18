@@ -123,7 +123,7 @@ const app = {
     if (tm) tm.classList.remove('open');
     this.stopFramePreview();
     const sheet = document.getElementById('frame-sheet');
-    if (sheet) sheet.style.display = 'none';
+    if (sheet) sheet.classList.remove('open');
     this.frameSheetOpen = false;
     this.stopCamera();
     this.cleanupPeer();
@@ -521,19 +521,13 @@ const app = {
   toggleFrameSheet() {
     const sheet = document.getElementById('frame-sheet');
     if (!sheet) return;
-    
+
+    // The slide-up is fully CSS-driven now (the .open class toggles
+    // transform + visibility with a transition). JS just flips the class so
+    // the transition fires reliably and there is no display:none flash.
+    this.frameSheetOpen = !this.frameSheetOpen;
+    sheet.classList.toggle('open', this.frameSheetOpen);
     if (this.frameSheetOpen) {
-      // Close
-      sheet.style.transform = 'translateY(100%)';
-      this.frameSheetOpen = false;
-      setTimeout(() => { sheet.style.display = 'none'; }, 300);
-    } else {
-      // Open
-      sheet.style.display = 'flex';
-      this.frameSheetOpen = true;
-      requestAnimationFrame(() => {
-        sheet.style.transform = 'translateY(0)';
-      });
       this.setFrameCategory('casts');
       this.buildFrameThumbnails();
     }

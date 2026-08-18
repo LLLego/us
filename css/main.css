@@ -96,9 +96,25 @@ button { font-family: inherit; color: inherit; }
   background: var(--bg);
   padding: calc(env(safe-area-inset-top, 0px)) var(--pad) calc(env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 .screen:not(.active) { display: none; }
+/* a screen that's also a scroll container shouldn't trigger the keyboard
+   jumping the layout on iOS — keep the chrome (status bar, home indicator)
+   honest and let inner content own the scroll, never the whole fixed page. */
+.screen:focus-within { scroll-padding-top: 16px; }
+
+/* ---------- a11y focus ---------- */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2.5px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--pill);
+}
+.chip:focus-visible,
+.frame-cat-btn:focus-visible { outline-offset: 3px; }
 
 /* ---------- shared controls ---------- */
 .btn {
@@ -122,7 +138,7 @@ button { font-family: inherit; color: inherit; }
   font-weight: 700;
 }
 .chip {
-  min-height: 40px;
+  min-height: 44px;     /* a11y: ≥44 hit area on small filter/layout chips */
   display: inline-flex; align-items: center; justify-content: center;
   padding: 0 16px;
   border: 1.5px solid var(--hair);
@@ -132,9 +148,10 @@ button { font-family: inherit; color: inherit; }
   font-family: var(--font-mono); font-size: 10px;
   text-transform: uppercase; letter-spacing: .1em;
   cursor: pointer; white-space: nowrap;
-  transition: all .2s;
+  transition: background-color .2s, color .2s, border-color .2s, transform .12s;
   flex-shrink: 0;
 }
+.chip:active { transform: scale(.96); }
 .chip.active {
   background: var(--fg); color: var(--bg);
   border-color: var(--fg);
@@ -248,8 +265,10 @@ button { font-family: inherit; color: inherit; }
   display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin-top: 18px;
 }
 #gallery-preview img {
-  width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: var(--r-sm);
-  border: 1px solid var(--hair);
+  /* natural aspect — preview thumbnails are tiny polaroids; clipping kills the
+     "look what we made" charm. JS sets inline padding/shadow on these. */
+  width: 100%; height: auto; display: block;
+  border: 1px solid var(--fg);
 }
 .landing-foot {
   width: 100%; padding: 16px var(--pad) calc(env(safe-area-inset-bottom, 0px) + 20px);
@@ -266,13 +285,14 @@ button { font-family: inherit; color: inherit; }
 .room-code-box {
   font-family: var(--font-mono); font-size: clamp(28px, 8vw, 42px); font-weight: 700; letter-spacing: .3em;
   padding: 18px 28px; border: 2px solid var(--fg); border-radius: var(--r-md);
-  background: var(--paper); box-shadow: var(--shadow);
+  background: var(--paper); color: var(--fg); box-shadow: var(--shadow);
 }
 .room-input {
   font-family: var(--font-mono); font-size: 22px; letter-spacing: .25em; text-transform: uppercase;
   text-align: center; width: min(240px, 70vw); min-height: 54px;
   border: 2px solid var(--fg); border-radius: var(--r-md); background: var(--paper); color: var(--fg); outline: none;
 }
+.room-input:focus-visible { border-color: var(--accent); }
 .waiting-dots span {
   display: inline-block; width: 8px; height: 8px; margin: 0 3px;
   background: var(--accent); border-radius: 50%;
@@ -314,12 +334,33 @@ button { font-family: inherit; color: inherit; }
 #room-pill.paired { background: var(--success); color: #fff; border-color: var(--fg); }
 
 .video-container {
-  position: relative; flex: 1 1 auto; width: 100%;
-  min-height: 0; display: flex; align-items: center; justify-content: center;
-  overflow: hidden; padding: 4px var(--pad);
+  /* Owns the viewfinder box. Aspect ratio is set inline by app.applyPreviewAspect()
+     based on the picked frame/layout; vertical strips flip to height-driven sizing
+     (max-height:100% + auto width) so they fit on short phones without clipping. */
+  position: relative;
+  flex: 1 1 0; min-height: 0;
+  width: 100%;
+  display: flex; align-items: stretch; justify-content: center;
+  align-self: center;
+  overflow: hidden;
+  margin: 0 var(--pad);
+  padding: 4px 0;
+  /* the width-aspect basis; .strip-mode height-flips this below */
+  max-width: calc(100% - var(--pad) * 2);
 }
-.video-half { position: relative; width: 50%; height: 100%; overflow: hidden; }
-.video-half video { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Vertical strips / very narrow templates: app.js also adds inline max-height:100%
+   + width:auto, but the cascade here keeps flex consistent so the centered child
+   still aligns and the overlay canvas (absolute inset:0) still fills the box. */
+.video-container > * { min-width: 0; min-height: 0; }
+.video-half {
+  position: relative; flex: 1 1 0; min-width: 0;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.video-half video {
+  width: 100%; height: 100%; object-fit: cover;
+  display: block; flex-shrink: 0;
+}
 .video-half.local video { transform: scaleX(-1); }
 .video-half.local video.no-mirror { transform: scaleX(1); }
 .video-half.remote video { transform: scaleX(1); }
@@ -327,21 +368,33 @@ button { font-family: inherit; color: inherit; }
   position: absolute; bottom: 8px; left: 8px;
   font-family: var(--font-mono); font-size: 9px; letter-spacing: .18em;
   background: rgba(20,16,12,.6); color: #fff; padding: 4px 10px; border-radius: var(--pill);
+  z-index: 6; pointer-events: none;
 }
-.video-divider { width: 2px; height: 100%; background: var(--bg); flex-shrink: 0; }
+.video-divider { width: 2px; flex-shrink: 0; background: var(--bg); }
+/* The live frame overlay spans the container; matches container box exactly,
+   devicePixelRatio scaling is handled in app.drawFrameOverlay(). */
+#frame-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 
 /* controls zone: fixed stack sizing */
 .controls-row {
   width: 100%; flex-shrink: 0;
   display: flex; justify-content: center; gap: 8px;
   padding: 10px var(--pad) 4px;
-  overflow-x: auto; scrollbar-width: none;
+  overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;   /* iOS: stop the rubber-band pulling the page */
 }
 .controls-row::-webkit-scrollbar { display: none; }
 .controls-row .chip { flex-shrink: 0; }
 .filter-row, .frame-row {
-  display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
-  scrollbar-width: none; -webkit-overflow-scrolling: touch; flex-shrink: 0;
+  display: flex; gap: 8px;
+  overflow-x: auto; overflow-y: hidden;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  flex-shrink: 0;
+  width: 100%;
 }
 .filter-row::-webkit-scrollbar, .frame-row::-webkit-scrollbar { display: none; }
 
@@ -397,10 +450,28 @@ button { font-family: inherit; color: inherit; }
 
 /* ---------- FRAME SHEET ---------- */
 #frame-sheet {
+  /* Closed by default: hidden, sits offscreen, no interactivity. The slide-up
+     animation only animates between two transform states when the sheet is in
+     the flex tree; visibility:hidden prevents the first paint flash that can
+     happen when display toggles from none→flex without a paint frame. */
+  position: fixed; bottom: 0; left: 0; right: 0;
+  z-index: 50;
   background: var(--bg);
+  color: var(--fg);
   border-top: 1.5px solid var(--fg);
   box-shadow: 0 -12px 32px -12px rgba(42,31,26,.4);
   border-radius: var(--r-lg) var(--r-lg) 0 0;
+  transform: translateY(100%);
+  visibility: hidden;
+  display: flex; flex-direction: column;
+  max-height: 56vh;
+  overflow: hidden;
+  transition: transform .3s cubic-bezier(.2,.7,.2,1), visibility 0s linear .3s;
+}
+#frame-sheet.open {
+  transform: translateY(0);
+  visibility: visible;
+  transition: transform .3s cubic-bezier(.2,.7,.2,1), visibility 0s linear 0s;
 }
 .sheet-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -411,17 +482,18 @@ button { font-family: inherit; color: inherit; }
 .sheet-done {
   min-height: 44px; padding: 0 20px;
   background: var(--fg); color: var(--bg);
-  border: none; border-radius: var(--pill);
+  border: 1.5px solid var(--fg); border-radius: var(--pill);
   font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
   cursor: pointer;
 }
 #frame-categories {
   display: flex; gap: 8px; padding: 4px var(--pad) 8px; flex-shrink: 0;
-  overflow-x: auto; scrollbar-width: none;
+  overflow-x: auto; overscroll-behavior-x: contain;
+  scrollbar-width: none;
 }
 #frame-categories::-webkit-scrollbar { display: none; }
 .frame-cat-btn {
-  min-height: 40px; padding: 0 16px; flex-shrink: 0;
+  min-height: 44px; padding: 0 16px; flex-shrink: 0;
   border: 1.5px solid var(--hair); border-radius: var(--pill);
   background: var(--paper); color: var(--fg-soft);
   font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
@@ -430,7 +502,8 @@ button { font-family: inherit; color: inherit; }
 .frame-cat-btn.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 #frame-thumbnails, #filter-thumbnails {
   display: flex; gap: 14px; padding: 10px var(--pad) calc(env(safe-area-inset-bottom, 0px) + 20px);
-  overflow-x: auto; flex-shrink: 0; -webkit-overflow-scrolling: touch;
+  overflow-x: auto; overscroll-behavior-x: contain;
+  flex-shrink: 0; -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 #frame-thumbnails::-webkit-scrollbar, #filter-thumbnails::-webkit-scrollbar { display: none; }
@@ -510,7 +583,12 @@ button { font-family: inherit; color: inherit; }
   width: 100%; max-width: 720px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 30px);
 }
 .gallery-grid img {
-  width: 100%; aspect-ratio: 3/4; object-fit: cover;
+  /* Captures are mixed-aspect (4:5 / 1:3 strips / 1:1 grids / wide duos), so we
+     honor natural proportions and cap the longest edge to avoid blown-up strips
+     swallowing the gallery. object-fit:cover would lop faces off here. */
+  width: auto; max-width: 100%;
+  height: auto; max-height: 60vh;
+  display: block; margin: 0 auto;
   border-radius: var(--r-sm); border: 1.5px solid var(--hair);
   cursor: pointer; background: var(--paper);
   transition: transform .15s;
@@ -533,6 +611,16 @@ button { font-family: inherit; color: inherit; }
   .landing-title { font-size: clamp(38px, 10vw, 64px); }
   .mode-card { padding: 18px; }
   .shutter-btn { width: 66px; height: 66px; }
+  #theme-btn { top: calc(env(safe-area-inset-top, 0px) + 56px); }
+  #theme-menu { top: calc(env(safe-area-inset-top, 0px) + 108px); }
+}
+
+/* landscape phones: the stage topbar + theme-btn would crash into each other */
+@media (orientation: landscape) and (max-height: 480px) {
+  .stage-topbar { padding-top: calc(env(safe-area-inset-top, 0px) + 6px); padding-bottom: 6px; }
+  #theme-btn { top: calc(env(safe-area-inset-top, 0px) + 48px); width: 40px; height: 40px; }
+  #theme-menu { top: calc(env(safe-area-inset-top, 0px) + 96px); }
+  .shutter-btn { width: 60px; height: 60px; }
 }
 
 /* reduced motion */

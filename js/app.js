@@ -556,7 +556,7 @@ const app = {
       const thumb = document.createElement('div');
       thumb.className = 'frame-thumb' + (key === this.currentFrame ? ' active' : '');
       thumb.dataset.frame = key;
-      thumb.style.cssText = 'flex-shrink:0;width:54px;height:72px;cursor:pointer;position:relative;border:2px solid var(--fg);box-shadow:2px 2px 0 var(--fg);transition:all 0.2s ease';
+      // sizing/styling from main.css (.frame-thumb) — no inline overrides
       
       // Mini canvas showing frame on placeholder
       const mini = document.createElement('canvas');
@@ -608,8 +608,7 @@ const app = {
         this.setFrame(key);
       };
       
-      // Add margin for label
-      thumb.style.marginBottom = '20px';
+      // label space handled by CSS margin-bottom on .frame-thumb
       
       container.appendChild(thumb);
     }

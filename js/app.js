@@ -41,11 +41,19 @@ const app = {
     this.buildFrameChips();
     this.buildLayoutChips();
     this.loadGalleryPreview();
-    
+
     // Preload sticker images for frames
     if (typeof preloadStickers !== 'undefined') {
       preloadStickers();
     }
+
+    // Both video halves start as "empty" — the camera start clears local,
+    // the remote stream arrival clears remote. Empty slots get a soft
+    // placeholder shimmer so the viewfinder doesn't look broken.
+    const localHalf = document.querySelector('.video-half.local');
+    const remoteHalf = document.getElementById('remote-half');
+    if (localHalf) localHalf.dataset.empty = '1';
+    if (remoteHalf) remoteHalf.dataset.empty = '1';
 
     // Check URL for room code
     const params = new URLSearchParams(window.location.search);
@@ -103,7 +111,9 @@ const app = {
   // ===== THEMES (court-ratified skins) =====
   toggleThemeMenu() {
     const m = document.getElementById('theme-menu');
+    const btn = document.getElementById('theme-btn');
     if (m) m.classList.toggle('open');
+    if (btn) btn.setAttribute('aria-expanded', m && m.classList.contains('open') ? 'true' : 'false');
     document.querySelectorAll('#theme-menu button').forEach(b => {
       b.classList.toggle('active', b.dataset.themeSet === this.theme);
     });
@@ -218,6 +228,9 @@ const app = {
       const video = document.getElementById('local-video');
       video.srcObject = this.localStream;
       this.applyFilterToVideo();
+      // mark the local half as live so the placeholder shimmer stops
+      const localHalf = document.querySelector('.video-half.local');
+      if (localHalf) localHalf.dataset.empty = '';
     } catch (err) {
       this.showCameraError(err && err.message ? err.message : String(err));
       throw err; // propagate so callers can react
@@ -262,10 +275,9 @@ const app = {
     if (!pill) {
       pill = document.createElement('button');
       pill.id = 'room-pill';
-      pill.className = 'mirror-btn';
       pill.onclick = () => this.copyRoomCode();
-      const tb = document.querySelector('.stage-topbar');
-      if (tb) tb.insertBefore(pill, document.getElementById('mirror-btn'));
+      const tb = document.querySelector('.stage-topbar-left');
+      if (tb) tb.appendChild(pill);
     }
     pill.style.display = '';
     pill.textContent = label;
@@ -282,7 +294,7 @@ const app = {
     const v = document.getElementById('local-video');
     if (v) v.style.transform = this.mirrored ? 'scaleX(-1)' : 'scaleX(1)';
     const btn = document.getElementById('mirror-btn');
-    if (btn) { btn.textContent = this.mirrored ? 'MIRROR: ON' : 'MIRROR: OFF'; btn.classList.toggle('active', this.mirrored); }
+    if (btn) btn.classList.toggle('active', this.mirrored);
     // keep the captured photos consistent with what you see
     this.mirrorCaptures = this.mirrored;
   },
@@ -308,14 +320,14 @@ const app = {
   hideRemote() {
     const rh = document.getElementById('remote-half');
     const vd = document.getElementById('video-divider');
-    if (rh) rh.style.display = 'none';
+    if (rh) { rh.style.display = 'none'; rh.dataset.empty = '1'; }
     if (vd) vd.style.display = 'none';
   },
 
   showRemote() {
     const rh = document.getElementById('remote-half');
     const vd = document.getElementById('video-divider');
-    if (rh) rh.style.display = 'block';
+    if (rh) { rh.style.display = 'block'; rh.dataset.empty = ''; }
     if (vd) vd.style.display = 'block';
   },
 
@@ -780,6 +792,14 @@ const app = {
     const flash = document.getElementById('flash');
     flash.classList.add('active');
     setTimeout(() => flash.classList.remove('active'), 120);
+    // capture-moment pulse on the shutter disk so the press feels alive
+    const shutter = document.getElementById('shutter-btn');
+    if (shutter) {
+      shutter.classList.remove('pulse');
+      void shutter.offsetWidth;
+      shutter.classList.add('pulse');
+      setTimeout(() => shutter.classList.remove('pulse'), 360);
+    }
   },
 
   captureSingleFrame() {
@@ -1042,7 +1062,8 @@ const app = {
 
     const polaroid = document.getElementById('reveal-polaroid');
     const canvas = document.getElementById('reveal-canvas');
-    const dateEl = document.getElementById('reveal-date');
+    // (date stamp removed — the frame template ALREADY contains its own
+    //  date art; a duplicate date below the polaroid was typographic noise.)
 
     // Draw captured image to reveal canvas
     const img = new Image();
@@ -1058,16 +1079,6 @@ const app = {
     };
     img.onerror = () => console.error('Failed to load captured image for reveal');
     img.src = this.capturedImage;
-
-    // Date stamp
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('en-US', {
-      month: 'long', day: 'numeric', year: 'numeric'
-    });
-    const timeStr = now.toLocaleTimeString('en-US', {
-      hour: 'numeric', minute: '2-digit'
-    });
-    dateEl.textContent = `${dateStr} · ${timeStr}`;
 
     // Slight random rotation
     const rot = (Math.random() - 0.5) * 3;
@@ -1437,8 +1448,17 @@ const app = {
   updateStatus(state, text) {
     const dot = document.getElementById('status-dot');
     const txt = document.getElementById('status-text');
-    if (dot) dot.className = 'status-dot ' + state;
-    if (txt) txt.textContent = text;
+    if (dot) {
+      dot.className = 'status-dot';
+      dot.dataset.state = state || '';
+    }
+    if (txt) {
+      txt.textContent = text || '';
+      // only show the text label when there's something to say —
+      // idle+connected or idle+solo is invisible by default
+      const meaningful = state === 'connecting' || state === 'connected' || state === 'error';
+      txt.dataset.shown = meaningful && text ? '1' : '';
+    }
   },
 
   // ===== SOUNDS (Web Audio API) =====

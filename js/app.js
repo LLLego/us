@@ -863,6 +863,8 @@ const app = {
     const flash = document.getElementById('flash');
 
     overlay.classList.add('active');
+    const sh = document.getElementById('shutter-btn');
+    if (sh) sh.classList.add('counting');
 
     return new Promise(resolve => {
       let count = seconds;
@@ -886,12 +888,31 @@ const app = {
           setTimeout(() => {
             flash.classList.remove('active');
             overlay.classList.remove('active');
+            if (sh) sh.classList.remove('counting');
             resolve();
           }, 150);
         }
       };
       tick();
     });
+  },
+
+  // ===== POSE PROMPTS =====
+  posePrompts: [
+    'smile like you mean it', 'silly face!', 'look away, act cool',
+    'big laugh', 'peace sign + wink', 'smize (smile with your eyes)',
+    'fake surprise!', 'puppy eyes', 'do a little twirl (motion blur ok)',
+    'dead serious face', 'blow a kiss', 'hands on cheeks, shocked',
+    'thumbs up, chin up', 'head tilt + grin', 'close your eyes, breathe',
+    'wave hi to future you', 'puff your cheeks', 'point at the camera',
+  ],
+  nextPosePrompt() {
+    // pick a prompt different from the last one
+    if (!this._lastPrompt) this._lastPrompt = -1;
+    let i;
+    do { i = Math.floor(Math.random() * this.posePrompts.length); } while (i === this._lastPrompt);
+    this._lastPrompt = i;
+    return this.posePrompts[i];
   },
 
   // ===== CAPTURE =====
@@ -933,8 +954,9 @@ const app = {
 
         if (shotNum < targetShots) {
           shutterBtn.title = `Shot ${shotNum + 1} of ${targetShots}`;
-          const sb = document.getElementById('shot-badge');
-          if (sb) { sb.textContent = `SHOT ${shotNum + 1} OF ${targetShots}`; sb.style.display = 'inline-flex'; }
+          // 1.5s gap = POSE PROMPT first, then the next countdown takes the badge back
+          const sbp = document.getElementById('shot-badge');
+          if (sbp) { sbp.textContent = this.nextPosePrompt() + ' \u2192'; sbp.style.display = 'inline-flex'; }
           this.flashFeedback();
           shutterBtn.disabled = false;
           setTimeout(() => {

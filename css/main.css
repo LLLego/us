@@ -210,7 +210,7 @@ button { font-family: inherit; color: inherit; }
 
 /* SHUTTER — rounded SQUARE */
 .shutter-btn {
-  width: 74px; height: 74px;
+  width: var(--shutter-size); height: var(--shutter-size);
   border: 3.5px solid var(--ink);
   border-radius: 22px;
   background: var(--acc);
@@ -270,7 +270,7 @@ button { font-family: inherit; color: inherit; }
 
 /* ICON BUTTON — 44px, raised */
 .icb {
-  width: 44px; height: 44px; min-width: 44px;
+  width: var(--tap-min); height: var(--tap-min); min-width: var(--tap-min);
   border: 2.5px solid var(--ink);
   border-radius: 12px;
   background: var(--paper);
@@ -502,12 +502,23 @@ input.k-input:focus { border-color: var(--acc); }
 .waiting-dots span:nth-child(3) { animation-delay: .4s; }
 @keyframes dotpulse { 0%,100% { opacity:.25; transform:scale(.85);} 50% { opacity:1; transform:scale(1.1);} }
 
+/* ---------- FLUID UI SCALE (viewport-adaptive controls) ---------- */
+/* fluid control sizes: pure px clamps (engine-safe, no unitless math)
+   shutter: 70px @360, 74px @390, 80px @440 | taps: 42px @360, 44px @390, 47px @440 */
+:root {
+  --shutter-size: clamp(66px, calc(70.7px + (100vw - 360px) * 0.11), 84px);
+  --tap-min: clamp(40px, calc(42px + (100vw - 360px) * 0.066), 52px);
+  --chip-h: clamp(40px, calc(42px + (100vw - 360px) * 0.066), 52px);
+}
+
 /* ---------- STAGE (booth) ---------- */
 #stage { padding: 0; justify-content: flex-start; }
 
 .video-container {
   position: relative;
-  flex: 1 1 auto; min-height: 0;
+  flex: 1 1 auto;
+  /* guaranteed photo area even on tiny screens: never below 46% of height */
+  min-height: max(46vh, 280px);
   width: 100%;
   display: flex; align-items: stretch; justify-content: center;
   align-self: center;
@@ -563,7 +574,7 @@ input.k-input:focus { border-color: var(--acc); }
 /* controls zone: fixed stack sizing — sticker machine keys (Gallery ghost / shutter / Looks chip) */
 .controls-bar {
   width: 100%; flex-shrink: 0;
-  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  display: grid; grid-template-columns: 1fr max-content 1fr; align-items: center;
   gap: 10px;
   padding: 8px var(--pad) calc(env(safe-area-inset-bottom, 0px) + 16px);
 }
@@ -919,8 +930,8 @@ input.k-input:focus { border-color: var(--acc); }
 @media (max-height: 700px) {
   .landing-hero { padding-top: 14px; padding-bottom: 24px; }
   .landing-title { font-size: clamp(38px, 10vw, 64px); }
-  .mode-card { padding: 18px; }
-  .shutter-btn { width: 64px; height: 64px; }
+  .mode-card { padding:  18px; }
+  .shutter-btn { width: calc(var(--shutter-size) * .88); height: calc(var(--shutter-size) * .88); }
 }
 @media (orientation: landscape) and (max-height: 480px) {
   .stage-topbar { padding-top: calc(env(safe-area-inset-top, 0px) + 4px); padding-bottom: 6px; }

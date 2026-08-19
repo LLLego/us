@@ -406,6 +406,12 @@ input.k-input:focus { border-color: var(--acc); }
   box-shadow: 0 3px 0 var(--ink-sh);
 }
 .join-pill button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink-sh); }
+@media (max-width: 400px) {
+  .join-pill { flex-wrap: wrap; padding: 10px 14px; }
+  .join-pill .hand { flex: 1 1 100%; text-align: center; margin-bottom: 2px; }
+  .join-pill input { flex: 1 1 auto; width: auto; min-width: 0; }
+  .join-pill button { min-width: 84px; }
+}
 
 .landing-strip {
   width: 100%; background: var(--paper);
@@ -831,7 +837,7 @@ input.k-input:focus { border-color: var(--acc); }
   flex: 1; width: 100%;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 12px 10px;
   padding: 10px var(--pad);
   align-content: center;
 }
@@ -856,12 +862,14 @@ input.k-input:focus { border-color: var(--acc); }
   font-family: var(--font-mono); font-size: 8px; font-weight: 700;
   color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6);
 }
+.pick-cell:not(.selected) img { filter: saturate(.45) brightness(.82); }
 .pick-cell.selected {
-  box-shadow: 0 0 0 3px var(--acc), 0 4px 10px var(--glow);
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 3px var(--acc), 0 5px 12px var(--glow);
 }
 .pick-cell.selected .check {
-  position: absolute; top: 5px; right: 5px;
-  width: 22px; height: 22px;
+  position: absolute; top: 6px; right: 6px;
+  width: 26px; height: 26px;
   border-radius: 50%;
   background: var(--acc); color: var(--acc-ink);
   border: 2.5px solid var(--ink);

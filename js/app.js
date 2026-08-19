@@ -55,6 +55,12 @@ const app = {
     this.loadGalleryPreview();
     this.computeMonthlyDrop();
     this.maybeShowDropBadge();
+    // nx- frames register async (templates.json) — recompute the drop once they exist
+    const dropPoll = setInterval(() => {
+      const nx = (typeof FRAMES !== 'undefined') ? Object.keys(FRAMES).filter(k => k.startsWith('nx-')) : [];
+      if (nx.length > 0) { this.computeMonthlyDrop(); clearInterval(dropPoll); }
+    }, 500);
+    setTimeout(() => clearInterval(dropPoll), 10000);
 
     // Preload sticker images for frames
     if (typeof preloadStickers !== 'undefined') {
@@ -153,7 +159,8 @@ const app = {
   },
 
   openDrop() {
-    if (!this.dropFrameKey) this.computeMonthlyDrop();
+    // nx- frames register when templates.json arrives (after init) — recompute if needed
+    if (!this.dropFrameKey || this.dropIndex == null || this.dropTotal == null) this.computeMonthlyDrop();
     const img = document.getElementById('drop-img');
     if (img && typeof FramesNext !== 'undefined') {
       // Use the template strip png as the feature image — looks like a real strip
@@ -245,7 +252,7 @@ const app = {
       if (sel) {
         const check = document.createElement('div');
         check.className = 'check';
-        check.textContent = String(ord + 1);
+        check.textContent = '✓' + String(ord + 1);
         c.appendChild(check);
       }
     });

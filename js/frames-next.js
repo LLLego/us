@@ -219,8 +219,8 @@ const FramesNext = {
         ctx.lineTo(cx + cb * 0.22, cy - cb * 0.14);
         ctx.stroke();
         ctx.restore();
-      } else if (isLive || liveIndex === -1) {
-        // live video in this slot
+      } else if (isLive) {
+        // ONLY the current slot is live video; upcoming slots stay dim until their turn
         ctx.fillStyle = 'rgba(24,20,16,0.25)';
         ctx.fillRect(sl.x, sl.y, sl.w, sl.h);
         if (vidOk) {

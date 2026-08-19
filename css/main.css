@@ -82,6 +82,17 @@
   --dark:#3A2F16;--glow:rgba(245,175,60,.5)
 }
 
+/* ---------- GLOBAL THEME BUTTON ---------- */
+#global-theme-btn { position: fixed; }
+#global-theme-btn::after {
+  content: 'vibe';
+  position: absolute; left: 50%; top: calc(100% + 4px);
+  transform: translateX(-50%);
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink); opacity: .55;
+  pointer-events: none; white-space: nowrap;
+}
+
 /* ---------- THEME MENU (popover) ---------- */
 #theme-menu {
   display: none;
@@ -556,6 +567,12 @@ body {
   #stage { background: transparent; }
   #landing { max-width: 640px; }
   #stage { box-shadow: 0 24px 60px -30px var(--ink-sh), 0 4px 14px -6px var(--ink-sh); border-radius: 28px; }
+}
+@media (min-width: 1400px) {
+  #landing { max-width: 760px; }
+  #landing .landing-hero { padding-top: 44px; padding-bottom: 36px; }
+  #landing .mode-card { padding: 30px 32px; margin-bottom: 26px; }
+  .landing-title { font-size: clamp(64px, 6vw, 92px); }
 }
 
 /* ---------- FLUID UI SCALE (viewport-adaptive controls) ---------- */

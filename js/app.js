@@ -591,6 +591,7 @@ const app = {
   },
 
   setFrame(key) {
+    if (this.multiShotInProgress && this._captureChainActive) return;
     this.currentFrame = key;
     this.applyPreviewAspect();
     this.updateFrameOverlay();
@@ -827,6 +828,8 @@ const app = {
   },
 
   setLayout(key) {
+    // lock layout changes mid-capture — switching would wipe the session shots
+    if (this.multiShotInProgress && this._captureChainActive) return;
     if (!FramesNext.supports(key) && FRAMES[this.currentFrame] && FRAMES[this.currentFrame].framesNext) {
       key = 'strip-4';
     }
@@ -866,6 +869,8 @@ const app = {
       const tick = () => {
         if (count > 0) {
           numEl.textContent = count;
+          const sbc = document.getElementById('shot-badge');
+          if (sbc && sbc.style.display !== 'none') sbc.textContent = `SHOT ${this.sessionShots ? this.sessionShots.length + 1 : '?'} OF ${this._targetShots || (this.currentLayout === 'single' ? 1 : this.currentLayout === 'grid-2x2' ? 8 : 8)} · ${count}`;
           numEl.style.animation = 'none';
           void numEl.offsetWidth;
           numEl.style.animation = 'fadeInUp 0.5s ease-out';
@@ -924,9 +929,12 @@ const app = {
         }
 
         const shotNum = this.sessionShots.length;
+        this._targetShots = targetShots;
 
         if (shotNum < targetShots) {
           shutterBtn.title = `Shot ${shotNum + 1} of ${targetShots}`;
+          const sb = document.getElementById('shot-badge');
+          if (sb) { sb.textContent = `SHOT ${shotNum + 1} OF ${targetShots}`; sb.style.display = 'inline-flex'; }
           this.flashFeedback();
           shutterBtn.disabled = false;
           setTimeout(() => {
@@ -943,6 +951,8 @@ const app = {
           await this.finalizePairCapture();
           return;
         }
+        const sb0 = document.getElementById('shot-badge');
+        if (sb0) sb0.style.display = 'none';
         this.openPickScreen();
         this.multiShots = [];
         this.multiShotInProgress = false;
@@ -955,6 +965,8 @@ const app = {
         await this.composite();
       }
 
+      const sb1 = document.getElementById('shot-badge');
+      if (sb1) sb1.style.display = 'none';
       this.showReveal();
       this.multiShots = [];
       this.sessionShots = [];

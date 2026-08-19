@@ -31,7 +31,7 @@
   --acc2-ink: #3A2E24;
   --acc3-ink: #fff;
   --dark: #2E2318;
-  --glow: rgba(242,160,180,.3);
+  --glow: rgba(240,150,175,.5);
   --tap: 48px;
   --pad: 20px;
   --r-lg: 24px;
@@ -49,37 +49,74 @@
   --bg:#FBEDEE;--paper:#FFFDF6;--ink:#4A3240;--ink-sh:#31202B;
   --acc:#F58EA8;--acc2:#FCC9D4;--acc3:#F9E3B0;
   --acc-ink:#fff;--acc2-ink:#4A3240;--acc3-ink:#4A3240;
-  --dark:#3A2530;--glow:rgba(245,142,168,.32)
+  --dark:#3A2530;--glow:rgba(245,120,155,.55)
 }
 :root[data-theme="matcha"] {
   --bg:#F1F0E3;--paper:#FDFCF3;--ink:#39402E;--ink-sh:#242A1C;
   --acc:#9BB489;--acc2:#E9CFA4;--acc3:#6E8A5E;
   --acc-ink:#fff;--acc2-ink:#39402E;--acc3-ink:#fff;
-  --dark:#2B3122;--glow:rgba(155,180,137,.3)
+  --dark:#2B3122;--glow:rgba(140,175,120,.5)
 }
 :root[data-theme="blueberry"] {
   --bg:#EFEBE4;--paper:#FCFBF6;--ink:#2E3050;--ink-sh:#1D1E36;
   --acc:#8B93C9;--acc2:#F2D8A0;--acc3:#6B74AC;
   --acc-ink:#fff;--acc2-ink:#2E3050;--acc3-ink:#fff;
-  --dark:#232440;--glow:rgba(139,147,201,.32)
+  --dark:#232440;--glow:rgba(125,135,205,.5)
 }
 :root[data-theme="choco"] {
   --bg:#F0E6D8;--paper:#FBF4E8;--ink:#3B2314;--ink-sh:#251509;
   --acc:#A9714B;--acc2:#EBC24E;--acc3:#7E4E30;
   --acc-ink:#fff;--acc2-ink:#3B2314;--acc3-ink:#fff;
-  --dark:#2E1B0E;--glow:rgba(169,113,75,.3)
+  --dark:#2E1B0E;--glow:rgba(170,100,55,.5)
 }
 :root[data-theme="taro"] {
   --bg:#F2ECF0;--paper:#FCFAF6;--ink:#41355A;--ink-sh:#2A2140;
   --acc:#B4A3CF;--acc2:#F0D9B8;--acc3:#8F7BB4;
   --acc-ink:#fff;--acc2-ink:#41355A;--acc3-ink:#fff;
-  --dark:#332A49;--glow:rgba(180,163,207,.32)
+  --dark:#332A49;--glow:rgba(170,150,215,.5)
 }
 :root[data-theme="mango"] {
   --bg:#FBF2DF;--paper:#FFFCF0;--ink:#4A3B1E;--ink-sh:#302510;
   --acc:#F5B742;--acc2:#8CC084;--acc3:#E0912F;
   --acc-ink:#4A3B1E;--acc2-ink:#fff;--acc3-ink:#fff;
-  --dark:#3A2F16;--glow:rgba(245,183,66,.32)
+  --dark:#3A2F16;--glow:rgba(245,175,60,.5)
+}
+
+/* ---------- THEME MENU (popover) ---------- */
+#theme-menu {
+  display: none;
+  position: fixed;
+  left: calc(env(safe-area-inset-left, 0px) + 12px);
+  top: calc(env(safe-area-inset-top, 0px) + 68px);
+  z-index: 70;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: var(--r-md);
+  box-shadow: 0 8px 0 var(--ink-sh), var(--shadow-lg);
+  max-width: min(240px, calc(100vw - 24px));
+}
+#theme-menu.open { display: flex; }
+#theme-menu button {
+  min-height: 40px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: .02em;
+  text-align: left;
+  padding: 8px 12px;
+  border: 2.5px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+#theme-menu button.active {
+  border-color: var(--ink);
+  background: var(--acc);
+  color: var(--acc-ink);
+  box-shadow: 0 2px 0 var(--ink-sh);
 }
 
 /* ---------- base ---------- */
@@ -501,6 +538,25 @@ input.k-input:focus { border-color: var(--acc); }
 .waiting-dots span:nth-child(2) { animation-delay: .2s; }
 .waiting-dots span:nth-child(3) { animation-delay: .4s; }
 @keyframes dotpulse { 0%,100% { opacity:.25; transform:scale(.85);} 50% { opacity:1; transform:scale(1.1);} }
+
+/* ---------- AMBIENT BACKGROUND (theme-aware, all screens, desktop included) ---------- */
+/* layered DIRECTLY on body (a ::before at z-index:-1 paints behind the body bg = invisible) */
+body {
+  background-image:
+    radial-gradient(130% 80% at 50% -10%, rgba(255,255,255,.85), transparent 52%),
+    radial-gradient(170% 105% at 50% 115%, var(--glow), transparent 58%),
+    radial-gradient(90% 55% at 50% 55%, transparent, var(--ink-sh) 140%),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.028) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,.022) 0 1px, transparent 1px 3px);
+  background-attachment: fixed;
+}
+/* desktop/tablet: the booth column gets grounded — card on the surface, not floating in void */
+@media (min-width: 900px) {
+  .screen { max-width: 560px; margin: 0 auto; }
+  #stage { background: transparent; }
+  #landing { max-width: 640px; }
+  #stage { box-shadow: 0 24px 60px -30px var(--ink-sh), 0 4px 14px -6px var(--ink-sh); border-radius: 28px; }
+}
 
 /* ---------- FLUID UI SCALE (viewport-adaptive controls) ---------- */
 /* fluid control sizes: pure px clamps (engine-safe, no unitless math)

@@ -1,8 +1,10 @@
 ---
-status: open
+status: fixed
 domain: css-ui
 severity: major
 ---
+
+FIX (Lane 3, 2026-08-23): added `.screen { padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--pad)); }` safety net so any unstyled child of #landing/#stage still clears the home indicator. Did NOT remove the `padding:0` overrides (would be redesign).
 
 SYMPTOM
 `.screen` defines `padding: calc(env(safe-area-inset-top, 0px)) var(--pad) calc(env(safe-area-inset-bottom, 0px))`, but `#landing` overrides to `padding: 0; gap: 0;` (`css/main.css:372`). The landing children that consume safe-area — `.landing-nav`, `.landing-foot`, `.landing-hero` — DO apply `env(safe-area-inset-…)` directly, so the bottom safe-area is honored on the foot. However, the override strips the side horizontal padding too, and `#landing` is the only screen relying on children to re-add the right `var(--pad)`. While the landing-cards/strip/foot do pad themselves, the inner `.mode-card` shadows (5px offset + 18px drop) extend past the 20px `--pad` at the edges when the viewport is < 320px wide.

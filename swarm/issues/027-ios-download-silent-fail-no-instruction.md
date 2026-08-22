@@ -1,5 +1,5 @@
 ---
-status: open
+status: fixed
 domain: flows
 severity: major
 ---

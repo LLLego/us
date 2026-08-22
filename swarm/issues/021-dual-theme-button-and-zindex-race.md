@@ -1,8 +1,10 @@
 ---
-status: open
+status: fixed
 domain: css-ui
 severity: major
 ---
+
+FIX (Lane 3, 2026-08-23): CSS `#stage.active ~ #global-theme-btn { display: none; }` collapses the duplicate; JS `toggleThemeMenu()` now mirrors `aria-expanded` onto BOTH #theme-btn and #global-theme-btn so SR semantics follow whichever the user clicked.
 
 SYMPTOM
 Two distinct theme-toggle buttons are rendered in the DOM at the same time, both wired to `app.toggleThemeMenu()`. The `#stage` view has `#theme-btn.icb` (sun/moon SVG icon) inside `.stage-topbar-right`. There is also a separately-positioned `#global-theme-btn.icb` (Unicode glyph `&#9680;`) at the very end of `body` that renders on every screen (not gated to a specific screen). Result: on the booth stage the user sees TWO theme buttons stacked — one icon-style inside the topbar and one glyph-style overlaid top-left above the screen. The popover `z-index:70` also collides with `#flash z-index:70` so the menu can paint under or above the white capture flash depending on document order at click time.

@@ -27,7 +27,7 @@
   --acc: #F2A0B4;
   --acc2: #F2C879;
   --acc3: #8FBF9E;
-  --acc-ink: #fff;
+  --acc-ink: #3A2E24;
   --acc2-ink: #3A2E24;
   --acc3-ink: #fff;
   --dark: #2E2318;
@@ -48,41 +48,45 @@
 :root[data-theme="strawberry"] {
   --bg:#FBEDEE;--paper:#FFFDF6;--ink:#4A3240;--ink-sh:#31202B;
   --acc:#F58EA8;--acc2:#FCC9D4;--acc3:#F9E3B0;
-  --acc-ink:#fff;--acc2-ink:#4A3240;--acc3-ink:#4A3240;
-  --dark:#3A2530;--glow:rgba(245,120,155,.55)
+  --acc-ink:#4A3240;--acc2-ink:#4A3240;--acc3-ink:#4A3240;
+  --dark:#3A2530;--glow:rgba(245,120,155,.55);--tap:48px
 }
 :root[data-theme="matcha"] {
   --bg:#F1F0E3;--paper:#FDFCF3;--ink:#39402E;--ink-sh:#242A1C;
   --acc:#9BB489;--acc2:#E9CFA4;--acc3:#6E8A5E;
-  --acc-ink:#fff;--acc2-ink:#39402E;--acc3-ink:#fff;
-  --dark:#2B3122;--glow:rgba(140,175,120,.5)
+  --acc-ink:#39402E;--acc2-ink:#39402E;--acc3-ink:#fff;
+  --dark:#2B3122;--glow:rgba(140,175,120,.5);--tap:48px
 }
 :root[data-theme="blueberry"] {
   --bg:#EFEBE4;--paper:#FCFBF6;--ink:#2E3050;--ink-sh:#1D1E36;
   --acc:#8B93C9;--acc2:#F2D8A0;--acc3:#6B74AC;
-  --acc-ink:#fff;--acc2-ink:#2E3050;--acc3-ink:#fff;
-  --dark:#232440;--glow:rgba(125,135,205,.5)
+  --acc-ink:#2E3050;--acc2-ink:#2E3050;--acc3-ink:#fff;
+  --dark:#232440;--glow:rgba(125,135,205,.5);--tap:48px
 }
 :root[data-theme="choco"] {
   --bg:#F0E6D8;--paper:#FBF4E8;--ink:#3B2314;--ink-sh:#251509;
   --acc:#A9714B;--acc2:#EBC24E;--acc3:#7E4E30;
   --acc-ink:#fff;--acc2-ink:#3B2314;--acc3-ink:#fff;
-  --dark:#2E1B0E;--glow:rgba(170,100,55,.5)
+  --dark:#2E1B0E;--glow:rgba(170,100,55,.5);--tap:48px
 }
 :root[data-theme="taro"] {
   --bg:#F2ECF0;--paper:#FCFAF6;--ink:#41355A;--ink-sh:#2A2140;
   --acc:#B4A3CF;--acc2:#F0D9B8;--acc3:#8F7BB4;
-  --acc-ink:#fff;--acc2-ink:#41355A;--acc3-ink:#fff;
-  --dark:#332A49;--glow:rgba(170,150,215,.5)
+  --acc-ink:#41355A;--acc2-ink:#41355A;--acc3-ink:#fff;
+  --dark:#332A49;--glow:rgba(170,150,215,.5);--tap:48px
 }
 :root[data-theme="mango"] {
   --bg:#FBF2DF;--paper:#FFFCF0;--ink:#4A3B1E;--ink-sh:#302510;
   --acc:#F5B742;--acc2:#8CC084;--acc3:#E0912F;
   --acc-ink:#4A3B1E;--acc2-ink:#fff;--acc3-ink:#fff;
-  --dark:#3A2F16;--glow:rgba(245,175,60,.5)
+  --dark:#3A2F16;--glow:rgba(245,175,60,.5);--tap:48px
 }
 
 /* ---------- GLOBAL THEME BUTTON ---------- */
+/* On the stage, the contextual topbar #theme-btn is canonical.
+   Hide the persistent global button there to avoid a duplicate
+   trigger and a z-index race with #flash. */
+#stage.active ~ #global-theme-btn { display: none; }
 #global-theme-btn { position: fixed; }
 #global-theme-btn::after {
   content: 'vibe';
@@ -94,12 +98,21 @@
 }
 
 /* ---------- THEME MENU (popover) ---------- */
+/* z-index bands (single source of truth):
+     base    0   default content
+     topbar 40   stage topbar pills
+     sheet  50   frame sheet (bottom slide)
+     overlay 60  countdown, global-theme-btn
+     flash  65   capture flash (below all popovers)
+     menu   80   theme popover (above flash)
+     modal  90   reserved for partner-missing / blocking modals
+*/
 #theme-menu {
   display: none;
   position: fixed;
   left: calc(env(safe-area-inset-left, 0px) + 12px);
   top: calc(env(safe-area-inset-top, 0px) + 68px);
-  z-index: 70;
+  z-index: 80;
   flex-direction: column;
   gap: 6px;
   padding: 10px;
@@ -111,7 +124,7 @@
 }
 #theme-menu.open { display: flex; }
 #theme-menu button {
-  min-height: 40px;
+  min-height: var(--tap);
   font-family: var(--font-mono);
   font-size: 12px;
   letter-spacing: .02em;
@@ -160,6 +173,11 @@ button { font-family: inherit; color: inherit; }
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
+/* Safety net: any child that doesn't re-add env() still clears the
+   home indicator. `#landing` and `#stage` opt out via `padding:0` so they
+   can paint full-bleed; this safety net lifts the bottom padding back to
+   `max(env(safe-area-inset-bottom), var(--pad))` regardless. */
+.screen { padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--pad)); }
 .screen:not(.active) { display: none; }
 .screen:focus-within { scroll-padding-top: 16px; }
 
@@ -196,7 +214,7 @@ button { font-family: inherit; color: inherit; }
     inset 0 -6px 0 rgba(0,0,0,.13),
     inset 0 3px 0 rgba(255,255,255,.3);
   transition: transform .06s, box-shadow .06s;
-  min-height: 44px;
+  min-height: var(--tap);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -213,7 +231,7 @@ button { font-family: inherit; color: inherit; }
 
 /* CHIP — 2.5px ink border, raised */
 .chip {
-  min-height: 44px;
+  min-height: var(--tap);
   display: inline-flex; align-items: center; justify-content: center;
   padding: 0 16px;
   border: 2.5px solid var(--ink);
@@ -254,7 +272,6 @@ button { font-family: inherit; color: inherit; }
   box-shadow: 0 3px 0 var(--ink-sh);
 }
 .badge.acc-bg { background: var(--acc); color: var(--acc-ink); }
-.badge.dark   { background: var(--dark); color: var(--paper); }
 
 /* SHUTTER — rounded SQUARE */
 .shutter-btn {
@@ -576,12 +593,16 @@ body {
 }
 
 /* ---------- FLUID UI SCALE (viewport-adaptive controls) ---------- */
-/* fluid control sizes: pure px clamps (engine-safe, no unitless math)
-   shutter: 70px @360, 74px @390, 80px @440 | taps: 42px @360, 44px @390, 47px @440 */
+/* fluid control sizes: pure px clamps (engine-safe, no unitless math).
+   Floor enforced at 44px so narrow viewports never undershoot the tap-target
+   floor (iOS 44pt / WCAG 2.5.5 / Android 48dp).
+     tap-min: 44px floor, 44px @360, 46px @560, 52px @1240
+     chip-h : 44px floor, 44px @360, 46px @560, 52px @1240
+     shutter: 70px @360, 80px @440, 84px ceiling (visual, no floor constraint) */
 :root {
   --shutter-size: clamp(66px, calc(70.7px + (100vw - 360px) * 0.11), 84px);
-  --tap-min: clamp(40px, calc(42px + (100vw - 360px) * 0.066), 52px);
-  --chip-h: clamp(40px, calc(42px + (100vw - 360px) * 0.066), 52px);
+  --tap-min: clamp(44px, calc(44px + (100vw - 360px) * 0.02), 52px);
+  --chip-h: clamp(44px, calc(44px + (100vw - 360px) * 0.02), 52px);
 }
 
 /* ---------- STAGE (booth) ---------- */
@@ -653,7 +674,7 @@ body {
 }
 .ctrl-ghost {
   justify-self: end;
-  min-height: 44px; min-width: 44px;
+  min-height: var(--tap); min-width: var(--tap);
   display: inline-flex; align-items: center; gap: 6px;
   padding: 0 16px;
   border: none; border-radius: var(--pill);
@@ -668,7 +689,7 @@ body {
 .ctrl-ghost svg { display: block; }
 .ctrl-chip {
   justify-self: start;
-  min-height: 44px;
+  min-height: var(--tap);
   display: inline-flex; align-items: center; gap: 6px;
   padding: 0 16px;
   border: 2.5px solid var(--ink); border-radius: 13px;
@@ -693,7 +714,7 @@ body {
 .stage-topbar-left,
 .stage-topbar-right {
   display: inline-flex; align-items: center; gap: 8px;
-  min-height: 44px;
+  min-height: var(--tap);
 }
 .status-dot {
   width: 9px; height: 9px; border-radius: 50%;
@@ -748,7 +769,7 @@ body {
 .sheet-title { font-family: var(--font-display); font-size: 20px; font-weight: 400; }
 .sheet-title em { color: var(--acc); font-style: italic; }
 .sheet-done {
-  min-height: 44px; padding: 0 20px;
+  min-height: var(--tap); padding: 0 20px;
   background: var(--ink); color: var(--paper);
   border: 2.5px solid var(--ink); border-radius: 13px;
   font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
@@ -762,7 +783,7 @@ body {
 }
 #frame-categories::-webkit-scrollbar { display: none; }
 .frame-cat-btn {
-  min-height: 44px; padding: 0 16px; flex-shrink: 0;
+  min-height: var(--tap); padding: 0 16px; flex-shrink: 0;
   border: 2.5px solid var(--ink); border-radius: 13px;
   background: var(--paper); color: var(--ink);
   font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
@@ -812,8 +833,10 @@ body {
 }
 
 /* ---------- FLASH ---------- */
+/* sits below popovers (theme-menu 80) but above the countdown overlay (60)
+   so it never whites-out a popover the user is reading */
 #flash {
-  position: fixed; inset: 0; z-index: 70; background: #fff; opacity: 0;
+  position: fixed; inset: 0; z-index: 65; background: #fff; opacity: 0;
   pointer-events: none; transition: opacity .35s;
 }
 #flash.show { opacity: .9; transition: opacity 0s; }
@@ -824,7 +847,6 @@ body {
   display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
 }
-.reveal-date { display: none !important; }
 @keyframes developWipe { from { filter: sepia(1) brightness(1.6) saturate(0); } to { filter: none; } }
 .develop-wipe { animation: developWipe 1.2s ease-out both; }
 
@@ -926,6 +948,8 @@ body {
   padding: calc(env(safe-area-inset-top, 0px) + 18px) var(--pad) 8px;
   display: flex; justify-content: space-between; align-items: center;
   flex-wrap: wrap; gap: 10px;
+  position: relative;
+  z-index: 70; /* above #flash (65) so the count badge stays visible during a late capture */
 }
 .pick-title {
   font-family: var(--font-display); font-size: clamp(22px, 6vw, 30px); font-weight: 300;
@@ -1010,12 +1034,37 @@ body {
   .stage-topbar { padding-top: calc(env(safe-area-inset-top, 0px) + 4px); padding-bottom: 6px; }
   .shutter-btn { width: 60px; height: 60px; }
 }
-@media (max-width: 360px) {
-  .layout-chip { padding: 0 10px 0 8px; font-size: 9px; }
-  .layout-chip::before { width: 12px; height: 12px; }
-}
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01s !important; transition-duration: .01s !important; }
+  /* LANE2-FIX 035 — honor the system preference. */
+  /* Kill every animation/transition globally (covers develop-wipe, flash, */
+  /* countdown pop, chip/shutter pulses, video-half slotShimmer, etc.). */
+  /* Opacity changes still snap instantly — only the duration collapses. */
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Defensive: specific high-impact animations the brief calls out, set to */
+  /* none so even future additions that bypass the wildcard still drop. */
+  #flash.show,
+  .flash.active,
+  .develop-wipe,
+  .countdown-number,
+  .shutter-btn.pulse,
+  .shutter-btn.counting::after,
+  .status-dot[data-state="connecting"],
+  .video-half[data-empty="1"],
+  .pair-progress,
+  .duo-inline-error,
+  .partner-left-banner,
+  .partner-missing-modal,
+  .ios-save-hint,
+  .reveal-polaroid,
+  .reveal-card {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 /* ---------- DUO STATE MACHINE UI (Lane 1) ----------

@@ -1,8 +1,10 @@
 ---
-status: open
+status: fixed
 domain: css-ui
 severity: major
 ---
+
+FIX (Lane 3, 2026-08-23): replaced undershooting clamp with brief's pure-px recipe: `clamp(44px, calc(44px + (100vw - 360px) * 0.02), 52px)` for both `--tap-min` and `--chip-h`. Verified floor at 320px = 44px, ceiling at 1240px = 52px. No unitless×px math inside clamp.
 
 SYMPTOM
 The fluid `--tap-min` clamp at `css/main.css:583` evaluates `clamp(40px, calc(42px + (100vw - 360px) * 0.066), 52px)`. At viewport widths below 360px (Android compact devices at 320-359px, foldable covers, certain Android Go phones at 320×568), `100vw - 360px` is negative, so `(100vw - 360px) * 0.066` is negative (e.g., at 320px viewport: `(320-360)*0.066 = -40px*0.066 = -2.64px`), making the preferred value `42px + (-2.64px) = 39.36px`. The `clamp()` minimum is 40px, so the resolved value is `40px`. The `.icb` rule then applies `width: var(--tap-min); height: var(--tap-min); min-width: var(--tap-min)`, which yields a 40×40px tap target — BELOW the iOS 44pt and WCAG 2.5.5 (Level AAA) 44×44 CSS-px guidance, and below the Android Material 48dp.

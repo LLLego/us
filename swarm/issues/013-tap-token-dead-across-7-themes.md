@@ -1,8 +1,10 @@
 ---
-status: open
+status: fixed
 domain: css-ui
 severity: minor
 ---
+
+FIX (Lane 3, 2026-08-23): added `--tap:48px` to all 7 theme blocks; wired token to 8 consumer rules that previously hard-coded `min-height:44px` (.k, .chip, #theme-menu button, .frame-cat-btn, .ctrl-chip, .ctrl-ghost, .stage-topbar-left|right, .sheet-done). Token is now both declared AND referenced.
 
 SYMPTOM
 The CSS custom property `--tap` is declared in `:root` and re-declared (effectively) for every theme via the combined selector on line 22 `:root, :root[data-theme="honey"]`. The 6 remaining themes (strawberry, matcha, blueberry, choco, taro, mango) inherit the default. But no rule in `css/main.css` or any `*.html` reads `var(--tap)`. The only tap-related variable actually consumed is `--tap-min` (defined on line 583, read on line 321 inside `.icb`).

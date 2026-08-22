@@ -1,8 +1,10 @@
 ---
-status: open
+status: fixed
 domain: deploy
 severity: minor
 ---
+
+FIX (Lane 3, 2026-08-23): same fix as 021 — `#stage.active ~ #global-theme-btn { display: none; }` keeps the contextual #theme-btn as the only trigger on the booth.
 
 ## SYMPTOM
 The stage screen renders *two* theme-menu trigger buttons at the same time — one in the topbar (`#theme-btn`) and one pinned to the top-left of the viewport (`#global-theme-btn`). Both call `app.toggleThemeMenu()`. Both are visible, both have the same `aria-label="theme"`, and a screen reader will announce "theme, button" twice.

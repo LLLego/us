@@ -1,8 +1,10 @@
 ---
-status: open
+status: fixed
 domain: flows
 severity: major
 ---
+
+FIX (Lane 3, 2026-08-23): per brief v2.2 ships filters as a Looks-sheet tab — deleted the dead `#filter-row` from index.html and removed the orphan `buildFilterChips()` method/call from app.js. Canonical path remains #filters-tab → showFiltersInSheet().
 
 SYMPTOM
 On the stage screen there is no visible filter affordance. The chip row that is supposed to host filters is hidden in the HTML and `buildFilterChips()` never un-hides it.

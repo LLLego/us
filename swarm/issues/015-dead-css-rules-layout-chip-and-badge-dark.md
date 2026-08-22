@@ -1,8 +1,10 @@
 ---
-status: open
+status: fixed
 domain: css-ui
 severity: minor
 ---
+
+FIX (Lane 3, 2026-08-23): deleted `.reveal-date`, `.badge.dark`, `.layout-chip` + `.layout-chip::before`. Verified 0 hits across repo.
 
 SYMPTOM
 `css/main.css` ships two CSS rules (`.reveal-date`, `.badge.dark`, and `.layout-chip` inside the narrow-viewport media query) whose selectors do not match any element in `index.html` (or any other template under `templates/`). The byte cost is small, but the rules confuse maintainers and inflate the cascade: a `.badge.dark { background: var(--dark); color: var(--paper); }` declaration silently takes effect if anyone adds a `class="badge dark"` later, with no design review.

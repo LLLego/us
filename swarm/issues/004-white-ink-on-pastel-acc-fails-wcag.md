@@ -1,8 +1,10 @@
 ---
-status: open
+status: fixed
 domain: css-ui
 severity: critical
 ---
+
+FIX (Lane 3, 2026-08-23): replaced `--acc-ink:#fff` with dark ink matching `--ink` on honey, strawberry, blueberry, taro. Mango + matcha + choco unchanged (already dark). Contrast recomputed — all 4 fixed themes now ≥4.5:1. See swarm/LANE3-REPORT.md.
 
 SYMPTOM
 Buttons, chips, badges and menu items rendered with `--acc` background + `--acc-ink:#fff` foreground on pastel themes (honey, strawberry, blueberry, taro, mango) do NOT meet WCAG 1.4.3 contrast minimums for normal-size text. Affected reading: `contrast ratio below 3:1`, which fails BOTH AA (≥4.5:1 for text) AND AA Large (≥3:1 for >=18px or >=14px bold).

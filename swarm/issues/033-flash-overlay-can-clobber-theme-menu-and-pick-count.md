@@ -1,8 +1,10 @@
 ---
-status: open
+status: fixed
 domain: css-ui
 severity: major
 ---
+
+FIX (Lane 3, 2026-08-23): established explicit z-index bands (base 0, topbar 40, sheet 50, overlay 60, flash 65, menu 80, modal 90). Bumped `#theme-menu` 70→80, dropped `#flash` 70→65, added `position:relative; z-index:70` to `.pick-header` so the badge stays visible during a late capture.
 
 SYMPTOM
 `#flash` (white opacity-0.9 capture flash) is painted at `z-index:70` for 350ms after shutter release. `#theme-menu` is also at `z-index:70`. When a user opens the theme popover and then captures a photo, the flash element appears at the same stacking level; CSS resolves equal-z-index ties by source order (and `#flash` is later in the DOM than `#theme-menu`), so the white flash paints OVER the popover during the capture, hiding the just-clicked options the user was reading.

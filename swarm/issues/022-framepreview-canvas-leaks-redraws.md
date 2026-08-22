@@ -1,5 +1,5 @@
 ---
-status: open
+status: fixed
 domain: js-engine
 severity: minor
 ---

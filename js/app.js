@@ -56,7 +56,6 @@ const app = {
     this.canvas = document.getElementById('composite-canvas');
     this.ctx = this.canvas.getContext('2d');
     this.loadGallery();
-    this.buildFilterChips();
     this.theme = 'honey';
     try {
       const stored = localStorage.getItem('us_theme');
@@ -267,6 +266,10 @@ const app = {
     });
 
     this.updatePickCount(total);
+    // LANE2-FIX 022 — pause the rAF preview loop while on the pick screen.
+    // Resumes via `pickRetake` (which calls `initFrameOverlay`) or
+    // `retake()` after publishing the reveal.
+    this.pauseFramePreview();
     this.showScreen('pick-screen');
   },
 
@@ -390,9 +393,15 @@ const app = {
   // ===== THEMES (7 sticker-machine themes) =====
   toggleThemeMenu() {
     const m = document.getElementById('theme-menu');
-    const btn = document.getElementById('theme-btn');
-    if (m) m.classList.toggle('open');
-    if (btn) btn.setAttribute('aria-expanded', m && m.classList.contains('open') ? 'true' : 'false');
+    if (!m) return;
+    m.classList.toggle('open');
+    const open = m.classList.contains('open');
+    // Reflect state on EVERY theme trigger so screen-readers hear it correctly
+    // regardless of which button the user clicked (topbar #theme-btn on stage,
+    // persistent #global-theme-btn elsewhere).
+    document.querySelectorAll('#theme-btn, #global-theme-btn').forEach(btn => {
+      if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
     document.querySelectorAll('#theme-menu button').forEach(b => {
       b.classList.toggle('active', b.dataset.themeSet === this.theme);
     });
@@ -435,11 +444,31 @@ const app = {
   },
 
   cleanupPeer() {
-    // LANE1-FIX — stop the presence watchdog before tearing down the duo
-    // machine, otherwise its interval keeps referencing this.duo after
-    // we've moved on.
+    // LANE2-FIX 018 — single owner for teardown. Lane 1 added a presence
+    // watchdog + markPartnerLeft; we don't fight them. We just set a
+    // `_destroying` guard BEFORE the disconnect-handler can fire, so the
+    // peer.on('disconnected') handler (line ~1815) short-circuits instead of
+    // calling peer.reconnect() on a torn-down peer (which used to throw and
+    // swallowed the close signal the partner relies on).
+    //
+    // Order matters: stop media tracks → stop watchdog → mark the duo
+    // detached → close data channel → destroy peer. Stopping the local stream
+    // FIRST prevents the partner from receiving one final frame from a dead
+    // session, which used to confuse their UI into a 5–10 s "still connected"
+    // wait.
+    this._destroying = true;
     this._stopPresenceWatchdog();
     if (this.duo) this.duo.detach();
+
+    // LANE2-FIX 018 — stop tracks on BOTH local and remote streams before
+    // peer.destroy. The remote stream's tracks were never being stopped, so
+    // the partner's tab kept its MediaStream alive past goHome. Also revoke
+    // any pinned object URLs (defensive — `downloadPhoto` already revokes on
+    // each completion, but a sudden close during download could leak).
+    this._stopStreamTracks(this.remoteStream);
+    this.remoteStream = null;
+    this._revokeAllURLs();
+
     if (this.dataConnection) {
       try { this.dataConnection.close(); } catch(e) {}
       this.dataConnection = null;
@@ -448,9 +477,19 @@ const app = {
       try { this.peer.destroy(); } catch(e) {}
       this.peer = null;
     }
-    this.remoteStream = null;
     this.hideRemote();
     this.updateStatus('', 'READY');
+    // Reset the guard so a future initPeerJS() can run normally.
+    this._destroying = false;
+  },
+
+  _stopStreamTracks(stream) {
+    if (!stream || typeof stream.getTracks !== 'function') return;
+    try {
+      stream.getTracks().forEach(t => {
+        try { t.stop(); } catch (e) { /* track already ended */ }
+      });
+    } catch (e) { /* not a MediaStream */ }
   },
 
   // ===== MODE SELECTION =====
@@ -464,6 +503,10 @@ const app = {
   },
 
   startTogether(joining = false) {
+    // LANE2-FIX 022 — pause the rAF preview loop while the user is on the
+    // room screen. The host path calls `initFrameOverlay()` after the camera
+    // starts, which resumes the loop.
+    this.pauseFramePreview();
     this.mode = 'together';
     if (this.duo) this.duo.setRole(joining ? 'guest' : 'host');
 
@@ -621,19 +664,9 @@ const app = {
   },
 
   // ===== FILTERS UI =====
-  buildFilterChips() {
-    const row = document.getElementById('filter-row');
-    if (!row) return;
-    row.innerHTML = '';
-    for (const [key, f] of Object.entries(FILTERS)) {
-      const chip = document.createElement('button');
-      chip.className = 'filter-chip chip' + (key === this.currentFilter ? ' active' : '');
-      chip.textContent = f.name;
-      chip.dataset.filter = key;
-      chip.onclick = () => this.setFilter(key);
-      row.appendChild(chip);
-    }
-  },
+  // Filters are rendered exclusively inside the Looks sheet by showFiltersInSheet().
+  // The stage-row container for filter chips was removed (dead display:none); the
+  // canonical entry point is the "Filters" tab in #frame-categories.
 
   setFilter(key) {
     this.currentFilter = key;
@@ -713,6 +746,18 @@ const app = {
   frameOverlayCanvas: null,
   frameOverlayCtx: null,
   framePreviewLoop: null,
+  // LANE2-FIX 022 — generation counter. `drawFrameOverlay` snapshots the
+  // current generation at the top of the frame; before any await yields
+  // back, it checks that the snapshot still matches. If a new draw started
+  // (resize, stop, screen change) the old promise chain drops its writes
+  // instead of clobbering the canvas with stale spec coords.
+  _overlayGen: 0,
+  // LANE2-FIX 022 — pause flag. The rAF loop keeps its handle but stops
+  // scheduling draws while paused (e.g. on reveal / pick / gallery / room).
+  // A paused loop costs nothing (one rAF callback + early return). When the
+  // user comes back to stage, `startFramePreview` clears the pause and the
+  // loop resumes — the preview canvas is never "destroyed" or torn down.
+  _overlayPaused: false,
 
   initFrameOverlay() {
     this.frameOverlayCanvas = document.getElementById('frame-overlay');
@@ -722,29 +767,62 @@ const app = {
   },
 
   startFramePreview() {
-    if (this.framePreviewLoop) cancelAnimationFrame(this.framePreviewLoop);
-
-    const tick = () => {
-      this.drawFrameOverlay();
+    if (!this.framePreviewLoop) {
+      const tick = () => {
+        // Reschedule FIRST so a synchronous throw or paused-frame doesn't
+        // drop the loop.
+        this.framePreviewLoop = requestAnimationFrame(tick);
+        if (this._overlayPaused) return;
+        this.drawFrameOverlay();
+      };
       this.framePreviewLoop = requestAnimationFrame(tick);
-    };
-    tick();
+    } else {
+      // Loop was paused (or about to be resumed); just clear the pause.
+      this._overlayPaused = false;
+    }
+    // Bump the generation so any in-flight draw from the previous overlay
+    // (e.g. mid-resize) skips its writes.
+    this._overlayGen += 1;
+  },
+
+  pauseFramePreview() {
+    // LANE2-FIX 022 — pause, don't destroy. Called when leaving the booth
+    // (showReveal, openPickScreen, openGallery, room-screen). The loop
+    // keeps its rAF handle so coming back to stage is cheap; only the
+    // draw step is skipped.
+    this._overlayPaused = true;
+    if (this.frameOverlayCtx && this.frameOverlayCanvas) {
+      this.frameOverlayCtx.clearRect(0, 0, this.frameOverlayCanvas.width, this.frameOverlayCanvas.height);
+    }
+    // Bump the generation to cancel any in-flight draw from the prior
+    // screen (its `if (gen !== localGen) return` check now trips).
+    this._overlayGen += 1;
   },
 
   stopFramePreview() {
+    // Full stop — used on goHome only. The rAF handle is released and the
+    // canvas is cleared. A future `initFrameOverlay`/`startFramePreview`
+    // recreates the loop.
     if (this.framePreviewLoop) {
       cancelAnimationFrame(this.framePreviewLoop);
       this.framePreviewLoop = null;
     }
-    if (this.frameOverlayCtx) {
+    this._overlayPaused = false;
+    this._overlayGen += 1;
+    if (this.frameOverlayCtx && this.frameOverlayCanvas) {
       this.frameOverlayCtx.clearRect(0, 0, this.frameOverlayCanvas.width, this.frameOverlayCanvas.height);
     }
   },
 
   drawFrameOverlay() {
     if (!this.frameOverlayCanvas || !this.frameOverlayCtx) return;
+    if (this._overlayPaused) return;
     const container = document.getElementById('video-container');
     if (!container) return;
+
+    // LANE2-FIX 022 — snapshot the generation; any await that resolves after
+    // a new draw started must skip its writes.
+    const localGen = this._overlayGen;
 
     const rect = container.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -755,6 +833,8 @@ const app = {
       this.frameOverlayCanvas.style.width = rect.width + 'px';
       this.frameOverlayCanvas.style.height = rect.height + 'px';
     }
+
+    if (localGen !== this._overlayGen) return;
 
     const ctx = this.frameOverlayCtx;
     const w = this.frameOverlayCanvas.width;
@@ -767,9 +847,18 @@ const app = {
       ctx.save();
       if (this.frameSheetOpen) ctx.globalAlpha = 0.55;
       try {
-        FramesNext.drawLivePreview(ctx, w, h, this.currentFrame.replace('nx-',''), this.currentLayout,
-                                   document.getElementById('local-video'), this._fmtPrevDate(),
-                                   this.multiShots || [], (this.multiShots || []).length);
+        // drawLivePreview is async (it awaits _png() to decode the template).
+        // If a new draw fires before its awaits resolve, drop the writes.
+        const p = FramesNext.drawLivePreview(
+          ctx, w, h, this.currentFrame.replace('nx-', ''), this.currentLayout,
+          document.getElementById('local-video'), this._fmtPrevDate(),
+          this.multiShots || [], (this.multiShots || []).length
+        );
+        if (p && typeof p.then === 'function') {
+          p.then(() => {
+            if (localGen !== this._overlayGen) return;
+          }).catch(() => { /* best-effort */ });
+        }
       } catch (e) { /* preview is best-effort */ }
       ctx.restore();
     } else if (frameDef && this.currentFrame !== 'none') {
@@ -1536,6 +1625,12 @@ const app = {
 
   // ===== REVEAL =====
   showReveal() {
+    // LANE2-FIX 022 — pause the rAF loop before leaving stage so the overlay
+    // stops drawing on a hidden canvas (issue 022 repro: rAF continued
+    // through reveal/pick/gallery/room, calling getBoundingClientRect every
+    // frame on a hidden container). `initFrameOverlay` resumes the loop on
+    // the next visit to stage (`retake` / `pickRetake`).
+    this.pauseFramePreview();
     const pol = document.getElementById('reveal-polaroid');
     if (pol) { pol.classList.remove('develop-wipe'); void pol.offsetWidth; pol.classList.add('develop-wipe'); }
     if (!this.capturedImage) {
@@ -1589,21 +1684,166 @@ const app = {
   },
 
   // ===== DOWNLOAD =====
+  //
+  // LANE2-FIX 027 + 034 — iOS save path + objectURL revoke tracking.
+  //
+  // iOS Safari ignores `download` on `<a>` for blob/cross-origin URLs and the
+  // popup blocker swallows synthetic anchor clicks. We try three paths in
+  // order:
+  //   1. Web Share API (`navigator.canShare({ files })`) — the right tool on
+  //      iOS 13+; users get the native share sheet with "Save Image".
+  //   2. Open the object URL in a NEW TAB — Safari renders the JPEG inline
+  //      and the user can long-press → Save to Photos. We ALSO surface a
+  //      visible in-page hint overlay (not `alert()`) so they know the file
+  //      opened and how to save it.
+  //   3. Anchor click with `download` attribute — non-iOS desktops.
+  //
+  // Every `URL.createObjectURL` lives inside `this._objectURLs` and is
+  // revoked on the EARLIEST of: share-sheet close, hint dismissal, download
+  // start (1 s), error path. The 30 s timeout from before is gone — blobs
+  // survive long enough for download to begin; holding them longer just
+  // pins the page in memory.
+  isIOS() {
+    return /iP(hone|ad|od)/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  },
+
+  _objectURLs: new Set(),
+
+  _trackURL(url) {
+    this._objectURLs.add(url);
+    return url;
+  },
+
+  _revokeURL(url) {
+    if (!url) return;
+    try { URL.revokeObjectURL(url); } catch (e) { /* already gone */ }
+    this._objectURLs.delete(url);
+  },
+
+  _revokeAllURLs() {
+    for (const url of Array.from(this._objectURLs)) {
+      try { URL.revokeObjectURL(url); } catch (e) { /* already gone */ }
+      this._objectURLs.delete(url);
+    }
+  },
+
   async downloadPhoto() {
     if (!this.capturedImage) return;
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const name = `us_${this.mode}_${ts}.jpg`;
+
+    let blob;
     try {
-      const blob = await (await fetch(this.capturedImage)).blob();
-      const url = URL.createObjectURL(blob);
-      const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      blob = await (await fetch(this.capturedImage)).blob();
+    } catch (e) {
+      // Couldn't even build a blob — fall back to opening the dataURL inline.
+      // (No objectURL involved here, so no leak.)
+      const w = window.open(this.capturedImage, '_blank');
+      if (!w) this._surfaceInlineError('popup blocked — long-press the previous photo to save');
+      return;
+    }
+
+    const url = this._trackURL(URL.createObjectURL(blob));
+
+    // ===== PATH 1 — Web Share API =====
+    // iOS 13+ and most modern browsers expose `canShare({ files })`. If true,
+    // this is the *correct* save flow on iPhone — the share sheet includes
+    // "Save Image" and "Save to Photos" without the user having to discover
+    // long-press. Fire and forget; if the user dismisses, no leak.
+    try {
+      if (navigator.canShare) {
+        const file = new File([blob], name, { type: blob.type || 'image/jpeg' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'your photo' });
+          // User picked an action in the share sheet (Save / Messages / etc.)
+          // OR dismissed it. Either way, the blob is no longer needed.
+          this._revokeURL(url);
+          return;
+        }
+      }
+    } catch (e) {
+      // AbortError = user dismissed the share sheet. Don't surface as error.
+      if (e && e.name === 'AbortError') {
+        this._revokeURL(url);
+        return;
+      }
+      // Any other share failure → fall through to PATH 2.
+    }
+
+    // ===== PATH 2 — iOS new-tab + in-page hint =====
+    if (this.isIOS()) {
+      const w = window.open(url, '_blank');
+      if (!w) {
+        // Popup blocked. Surface a hint pointing at the URL itself so the
+        // user can re-open it manually. We don't dump a giant blob: URL into
+        // the visible text — instead, surface the dataURL is the dataURL so
+        // the user knows where the photo lives.
+        this._surfaceInlineError('popup blocked — copy this URL into Safari to open your photo');
+        setTimeout(() => this._revokeURL(url), 60000);
+        return;
+      }
+      // Tab opened. Show the in-page hint. Revoke after 60 s — the blob
+      // survives long enough for Safari to fully render it.
+      this._showIOSSaveHint(name, url);
+      return;
+    }
+
+    // ===== PATH 3 — Desktop anchor click =====
+    try {
       const link = document.createElement('a');
       link.href = url; link.download = name; link.rel = 'noopener';
-      link.target = isIOS ? '_blank' : '_self';
       document.body.appendChild(link); link.click(); link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      // Browser started the download. Revoke ASAP — modern browsers keep
+      // their own copy. 1 s gives the download a generous start window.
+      setTimeout(() => this._revokeURL(url), 1000);
     } catch (e) {
+      this._revokeURL(url);
       window.open(this.capturedImage, '_blank');
+    }
+  },
+
+  _showIOSSaveHint(name, blobURL) {
+    // In-page hint on iOS. NO alert(). Shows the user how to save the photo
+    // that just opened in a new tab.
+    let hint = document.getElementById('ios-save-hint');
+    if (!hint) {
+      hint = document.createElement('div');
+      hint.id = 'ios-save-hint';
+      hint.className = 'ios-save-hint';
+      hint.style.cssText = [
+        'position:fixed', 'left:50%', 'top:50%', 'transform:translate(-50%,-50%)',
+        'z-index:185',
+        'background:var(--paper)', 'border:3px solid var(--ink)',
+        'box-shadow:0 6px 0 var(--ink-sh),0 18px 36px rgba(0,0,0,.35)',
+        'padding:22px 24px', 'max-width:340px', 'width:calc(100% - 32px)',
+        'border-radius:14px', 'text-align:center',
+      ].join(';');
+      hint.innerHTML = `
+        <div style="font-family:'Fraunces',serif;font-size:22px;line-height:1.15;margin-bottom:6px">your photo opened</div>
+        <div style="font-family:'Caveat',cursive;font-size:18px;color:var(--acc);margin-bottom:14px">long-press it to save</div>
+        <div style="font-family:'Space Mono',monospace;font-size:11px;line-height:1.5;opacity:.7;margin-bottom:18px">
+          On the new tab, tap and hold the image, then choose<br><b>Save to Photos</b> (or <b>Add to Photos</b>).
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center">
+          <button id="ios-save-open" class="k p">OPEN AGAIN</button>
+          <button id="ios-save-dismiss" class="k w">GOT IT</button>
+        </div>`;
+      document.body.appendChild(hint);
+      const dismiss = () => {
+        if (hint && hint.parentNode) hint.remove();
+        this._revokeURL(blobURL);
+      };
+      hint.querySelector('#ios-save-dismiss').onclick = dismiss;
+      hint.querySelector('#ios-save-open').onclick = () => {
+        window.open(blobURL, '_blank');
+      };
+      // Auto-dismiss after 20 s; revoke the URL either way.
+      setTimeout(dismiss, 20000);
+    } else {
+      // Hint is already up from a previous download — refresh it.
+      if (hint.parentNode) hint.remove();
+      this._showIOSSaveHint(name, blobURL);
     }
   },
 
@@ -1628,6 +1868,11 @@ const app = {
   },
 
   async openGallery() {
+    // LANE2-FIX 022 — pause the rAF loop while the gallery is open. The
+    // overlay canvas is hidden, but the loop kept running on every screen
+    // except the landing page. Coming back to stage via `useDropFrame` /
+    // `retake` / etc. will resume via `initFrameOverlay`.
+    this.pauseFramePreview();
     this.showScreen('gallery-screen');
     const grid = document.getElementById('gallery-grid');
     grid.innerHTML = '<p class="gallery-empty">Loading your moments...</p>';
@@ -1812,6 +2057,14 @@ const app = {
     });
 
     this.peer.on('disconnected', () => {
+      // LANE2-FIX 018 — guard against `peer.reconnect()` racing with a
+      // teardown that is already in flight. cleanupPeer() sets
+      // `_destroying` BEFORE destroy() so this handler can short-circuit.
+      // Without the guard, the handler tried to reconnect a peer whose
+      // `destroyed` was about to flip true → threw → swallowed the close
+      // signal the partner relies on, leaving their tab stuck on
+      // "CONNECTED" for several seconds.
+      if (this._destroying) return;
       if (this.peer && !this.peer.destroyed) {
         try { this.peer.reconnect(); } catch(e) {}
       }

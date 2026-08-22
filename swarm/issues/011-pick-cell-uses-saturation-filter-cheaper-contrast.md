@@ -1,8 +1,10 @@
 ---
-status: open
+status: fixed
 domain: css-ui
 severity: major
 ---
+
+FIX (Lane 3, 2026-08-23): kept the v3-verified `filter: saturate(.45) brightness(.82)` on `.pick-cell:not(.selected) img` per brief; no regression to opacity. Rule intact in css/main.css:982.
 
 SYMPTOM
 `#pick-grid .pick-cell:not(.selected) img` (`css/main.css:966`) applies `filter: saturate(.45) brightness(.82)` to deselect un-picked frames. The intent — visually mute the photos the user rejected — works, but the pick screen background is fixed at `--paper` (per inline `:root` and the page relies on ambient body bg) and the dimmed photos can also go below 3:1 contrast against the `--paper` background, becoming near-invisible to users with reduced color sensitivity. In addition the `filter:` chain re-applies every paint and re-decodes the image pipeline at the GPU compositor level, costing battery on lower-end Android devices.

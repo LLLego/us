@@ -1018,6 +1018,18 @@ body {
   *, *::before, *::after { animation-duration: .01s !important; transition-duration: .01s !important; }
 }
 
+/* ---------- DUO STATE MACHINE UI (Lane 1) ----------
+   Inline error card, partner-left banner, pair-progress overlay, partner-
+   missing modal. The duo machine owns the *behavior* (transition logic,
+   ack protocol) — these rules only style what the machine emits. */
+.duo-inline-error { animation: duoFadeIn .18s ease-out; }
+.partner-left-banner { animation: duoFadeIn .18s ease-out; }
+.pair-progress { animation: duoFadeIn .22s ease-out; }
+.partner-missing-modal { animation: duoFadeIn .22s ease-out; }
+@keyframes duoFadeIn { from { opacity: 0; transform: translate(-50%, -6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.partner-left-banner { animation-name: duoFadeInLeft; }
+@keyframes duoFadeInLeft { from { opacity: 0; transform: translate(-50%, -6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
 /* ---------- video-half empty shimmer (kept) ---------- */
 .video-half { position: relative; }
 .video-half[data-empty="1"] {
